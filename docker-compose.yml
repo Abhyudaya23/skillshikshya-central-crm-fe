@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    extra_hosts:
+      # Lets nginx reach the Django backend running on the host at :8188
+      - "host.docker.internal:host-gateway"
