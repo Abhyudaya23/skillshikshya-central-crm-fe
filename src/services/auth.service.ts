@@ -1,9 +1,15 @@
 import { api } from "@/lib/api";
-import type { ChangePasswordPayload, LoginPayload, RegisterPayload, User } from "@/types";
+import type {
+  ChangePasswordPayload,
+  LoginPayload,
+  RegisterPayload,
+  ResetPasswordPayload,
+  User,
+} from "@/types";
 
 export const authService = {
   async login(payload: LoginPayload) {
-    const { data } = await api.post<{ message: string }>("/auth/login/", payload);
+    const { data } = await api.post<{ message: string; user: User }>("/auth/login/", payload);
     return data;
   },
 
@@ -22,22 +28,18 @@ export const authService = {
     return data;
   },
 
+  /** Sends a signed reset link to the email. In DEBUG mode the backend echoes it as `reset_link`. */
   async forgotPassword(email: string) {
-    const { data } = await api.post<{ detail: string }>("/auth/forgot-password/", { email });
+    const { data } = await api.post<{ detail: string; reset_link?: string }>(
+      "/auth/forgot-password/",
+      { email },
+    );
     return data;
   },
 
-  async verifyOtp(email: string, otp: string) {
-    const { data } = await api.post<{ detail: string }>("/auth/verify-otp/", { email, otp });
-    return data;
-  },
-
-  async resetPassword(email: string, new_password: string, confirm_new_password: string) {
-    const { data } = await api.post<{ detail: string }>("/auth/reset-password/", {
-      email,
-      new_password,
-      confirm_new_password,
-    });
+  /** Resets the password using uid + token from the emailed link's query params. */
+  async resetPassword(payload: ResetPasswordPayload) {
+    const { data } = await api.post<{ detail: string }>("/auth/reset-password/", payload);
     return data;
   },
 };

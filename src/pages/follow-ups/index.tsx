@@ -1,0 +1,163 @@
+import { CalendarClock, Check, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useDataSource } from "@/context/data-source";
+import { type FollowUpRow, useCompleteFollowup, useFollowUps } from "@/hooks/use-followups";
+import { useRole } from "@/context/role";
+import { formatDateTime, formatPhone, initialsOf, relativeToToday } from "@/lib/leads-format";
+import { cn } from "@/lib/utils";
+
+const BUCKETS = [
+  { key: "overdue", label: "Overdue", tone: "text-destructive" },
+  { key: "today", label: "Due today", tone: "text-amber-600 dark:text-amber-400" },
+  { key: "upcoming", label: "Upcoming", tone: "text-brand" },
+] as const;
+
+function FollowUpItem({ row, canComplete }: { row: FollowUpRow; canComplete: boolean }) {
+  const overdue = row.bucket === "overdue";
+  const complete = useCompleteFollowup();
+  const canAct = canComplete && row.leadApiId != null && row.followupId != null;
+  return (
+    <div className="hover:bg-accent/50 flex items-center gap-3 px-4 py-3 transition-colors">
+      <Link to={`/leads/${row.leadId}`} className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="bg-brand-fixed-dim/30 text-brand-container flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+          {initialsOf(row.leadName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">{row.leadName}</p>
+          <p className="text-muted-foreground truncate text-xs">
+            {row.purpose ?? "Follow-up"}
+            {row.phone && <> · {formatPhone(row.phone)}</>}
+          </p>
+        </div>
+      </Link>
+      <div className="shrink-0 text-right">
+        <p className={cn("text-sm font-medium", overdue && "text-destructive")}>
+          {relativeToToday(row.dueAt)}
+        </p>
+        <p className="text-muted-foreground text-xs">{formatDateTime(row.dueAt)}</p>
+      </div>
+      {row.assignedToName && (
+        <p className="text-muted-foreground hidden w-28 shrink-0 truncate text-right text-xs lg:block">
+          {row.assignedToName}
+        </p>
+      )}
+      {canAct && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={complete.isPending}
+          onClick={() =>
+            complete.mutate({ leadApiId: row.leadApiId as number, followupId: row.followupId as number })
+          }
+        >
+          <Check /> Complete
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export default function FollowUpsPage() {
+  const { isMock } = useDataSource();
+  const { can } = useRole();
+  const canComplete = can("leads.log_activity");
+  const { rows, isLoading } = useFollowUps();
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState<"all" | "overdue" | "today" | "upcoming">("all");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      `${r.leadName} ${r.phone} ${r.purpose ?? ""} ${r.assignedToName ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [rows, search]);
+
+  const grouped = useMemo(
+    () => ({
+      overdue: filtered.filter((r) => r.bucket === "overdue"),
+      today: filtered.filter((r) => r.bucket === "today"),
+      upcoming: filtered.filter((r) => r.bucket === "upcoming"),
+    }),
+    [filtered],
+  );
+
+  const sections = BUCKETS.filter((b) => view === "all" || b.key === view);
+  const visibleCount = sections.reduce((n, b) => n + grouped[b.key].length, 0);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-brand font-mono text-[11px] font-bold tracking-wider uppercase">CRM Workspace</p>
+        <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">Follow-ups</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Scheduled touchpoints across all leads, soonest first.
+          {isMock && " Previewing mock data."}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+          <TabsList>
+            <TabsTrigger value="all">All ({filtered.length})</TabsTrigger>
+            <TabsTrigger value="overdue">Overdue ({grouped.overdue.length})</TabsTrigger>
+            <TabsTrigger value="today">Today ({grouped.today.length})</TabsTrigger>
+            <TabsTrigger value="upcoming">Upcoming ({grouped.upcoming.length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative max-w-sm min-w-[14rem] flex-1">
+          <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
+          <Input
+            placeholder="Search by lead, phone, purpose, or counselor"
+            className="rounded-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : visibleCount === 0 ? (
+        <div className="text-muted-foreground rounded-2xl border border-dashed py-16 text-center">
+          <CalendarClock className="mx-auto size-8 opacity-40" />
+          <p className="mt-2 text-sm">
+            {view === "all" ? "No follow-ups scheduled." : `No ${view} follow-ups.`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {sections.map(({ key, label, tone }) => {
+            const items = grouped[key];
+            if (items.length === 0) return null;
+            return (
+              <section
+                key={key}
+                className="bg-card overflow-hidden rounded-2xl border shadow-[0_1px_3px_0_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)]"
+              >
+                <div className="flex items-center justify-between border-b px-4 py-2.5">
+                  <h2 className={cn("text-sm font-semibold", tone)}>{label}</h2>
+                  <span className="text-muted-foreground text-xs font-medium">{items.length}</span>
+                </div>
+                <div className="divide-border divide-y">
+                  {items.map((row) => (
+                    <FollowUpItem key={row.key} row={row} canComplete={canComplete} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -195,8 +195,10 @@ export default function RolesPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Roles &amp; Permissions</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1 className="font-headline text-3xl font-semibold tracking-tight">
+            Roles &amp; Permissions
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Admin-only — create role groups and assign Django permissions.
           </p>
         </div>
@@ -211,7 +213,7 @@ export default function RolesPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="bg-card overflow-hidden rounded-2xl border shadow-[0_1px_3px_0_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)]">
         <Table>
           <TableHeader>
             <TableRow>

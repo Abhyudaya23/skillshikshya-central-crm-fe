@@ -1,5 +1,5 @@
-import { ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Download, MoreHorizontal, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,9 +28,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "sonner";
 import { useAuth } from "@/context/auth";
 import { useGroups } from "@/hooks/use-groups";
 import { useDeleteUser, useUsers } from "@/hooks/use-users";
+import { apiErrorMessage } from "@/lib/api";
+import { usersService } from "@/services/users.service";
 import type { User } from "@/types";
 import { UserFormDialog } from "./user-form-dialog";
 
@@ -41,13 +44,35 @@ export default function UsersPage() {
   const isStaff = !!currentUser?.is_staff;
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [deleting, setDeleting] = useState<User | null>(null);
 
-  const { data, isLoading } = useUsers(page, PAGE_SIZE);
+  // Debounce the search box, then let the backend do the filtering (?search=).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading } = useUsers(page, PAGE_SIZE, debouncedSearch);
   const groups = useGroups(isStaff);
   const deleteUser = useDeleteUser();
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await usersService.exportCsv({ search: debouncedSearch || undefined });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Export failed"));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const groupName = useMemo(() => {
     const map = new Map<number, string>();
@@ -55,60 +80,57 @@ export default function UsersPage() {
     return map;
   }, [groups.data]);
 
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    const q = search.trim().toLowerCase();
-    if (!q) return data.results;
-    return data.results.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.designation ?? "").toLowerCase().includes(q) ||
-        (u.phone ?? "").includes(q),
-    );
-  }, [data, search]);
-
+  const rows = data?.results ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Users</h1>
-          <p className="text-muted-foreground text-sm">
-            {data ? `${data.count} team member${data.count === 1 ? "" : "s"}` : "Team members"}
+          <h1 className="font-headline text-3xl font-semibold tracking-tight">Users</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {data ? `${data.count} team member${data.count === 1 ? "" : "s"}` : "Team members"}{" "}
+            actively managing your CRM.
           </p>
         </div>
-        {isStaff && (
-          <Button
-            variant="brand"
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus /> Register user
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isStaff && (
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              <Download /> {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          )}
+          {isStaff && (
+            <Button
+              variant="brand"
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus /> Add New User
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="relative max-w-sm">
-        <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
+        <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
         <Input
-          placeholder="Search name, email, phone…"
-          className="pl-8"
+          placeholder="Search name, email, phone..."
+          className="rounded-full pl-9"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      <div className="rounded-lg border">
+      <div className="bg-card overflow-hidden rounded-2xl border shadow-[0_1px_3px_0_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)]">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Designation</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Branch</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Shift</TableHead>
               <TableHead>Call target</TableHead>
@@ -120,23 +142,23 @@ export default function UsersPage() {
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))}
-            {!isLoading && filtered.length === 0 && (
+            {!isLoading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-muted-foreground py-10 text-center">
+                <TableCell colSpan={9} className="text-muted-foreground py-10 text-center">
                   No users found.
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((u) => (
+            {rows.map((u) => (
               <TableRow key={u.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-brand/10 text-brand flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-brand-fixed-dim/30 text-brand-container flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                       {u.name
                         .split(" ")
                         .map((p) => p[0])
@@ -145,10 +167,10 @@ export default function UsersPage() {
                         .toUpperCase()}
                     </span>
                     <div className="leading-tight">
-                      <p className="font-medium">
+                      <p className="font-semibold">
                         {u.name}
                         {u.is_staff && (
-                          <Badge variant="brand" className="ml-2">
+                          <Badge variant="secondary" className="ml-2">
                             Admin
                           </Badge>
                         )}
@@ -157,35 +179,42 @@ export default function UsersPage() {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{u.designation || "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{u.designation || "—"}</TableCell>
                 <TableCell>
-                  {u.role != null ? (
-                    <Badge variant="secondary">{groupName.get(u.role) ?? `Role #${u.role}`}</Badge>
+                  {u.groups?.[0] != null ? (
+                    <Badge variant="secondary">
+                      {groupName.get(u.groups[0]) ?? `Role #${u.groups[0]}`}
+                    </Badge>
                   ) : (
                     "—"
                   )}
                 </TableCell>
-                <TableCell>{u.phone || "—"}</TableCell>
-                <TableCell>
+                <TableCell className="text-muted-foreground">{u.branch_name || "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{u.phone || "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
                   {u.shift_start && u.shift_end
                     ? `${u.shift_start.slice(0, 5)}–${u.shift_end.slice(0, 5)}`
                     : "—"}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-muted-foreground">
                   {u.daily_call_target_min != null ? `${u.daily_call_target_min} min/day` : "—"}
                 </TableCell>
                 <TableCell>
                   {u.is_active ? (
-                    <Badge variant="brand">Active</Badge>
+                    <Badge variant="brand" className="text-[11px] font-bold uppercase">
+                      Active
+                    </Badge>
                   ) : (
-                    <Badge variant="destructive">Inactive</Badge>
+                    <Badge variant="destructive" className="text-[11px] font-bold uppercase">
+                      Inactive
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell>
                   {(isStaff || currentUser?.id === u.id) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="rounded-full">
                           <MoreHorizontal />
                         </Button>
                       </DropdownMenuTrigger>
@@ -211,31 +240,33 @@ export default function UsersPage() {
             ))}
           </TableBody>
         </Table>
-      </div>
 
-      {data && data.count > PAGE_SIZE && (
-        <div className="flex items-center justify-end gap-2">
-          <span className="text-muted-foreground text-sm">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            <ChevronLeft />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight />
-          </Button>
-        </div>
-      )}
+        {data && data.count > PAGE_SIZE && (
+          <div className="bg-muted/50 flex items-center justify-between border-t px-6 py-3">
+            <span className="text-muted-foreground text-sm">
+              Showing {rows.length} of {data.count} members
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                <ChevronRight />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <UserFormDialog open={formOpen} onOpenChange={setFormOpen} user={editing} />
 

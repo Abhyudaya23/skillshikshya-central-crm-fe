@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Users | Success Central CRM</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#0b1c30",
+                        "surface-dim": "#d8dadc",
+                        "outline-variant": "#bccac1",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-surface-variant": "#3d4a43",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#00513a",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#006c4e",
+                        "inverse-surface": "#2d3133",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "on-secondary-fixed": "#111c2d",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "background": "#f7f9fb",
+                        "tertiary-container": "#66768d",
+                        "primary": "#00694c",
+                        "primary-fixed": "#84f8c9",
+                        "inverse-primary": "#67dbae",
+                        "surface": "#f7f9fb",
+                        "primary-container": "#008561",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#67dbae",
+                        "surface-bright": "#f7f9fb",
+                        "on-secondary-container": "#586377",
+                        "on-tertiary-container": "#fdfcff",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary": "#4d5d73",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#545f73",
+                        "on-primary-container": "#f5fff7",
+                        "outline": "#6d7a73",
+                        "on-surface": "#191c1e",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#002115",
+                        "tertiary-fixed": "#d3e4fe",
+                        "secondary-container": "#d5e0f8",
+                        "on-background": "#191c1e",
+                        "secondary-fixed": "#d8e3fb",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-mobile": "16px",
+                        "container-max": "1440px",
+                        "gutter-desktop": "24px",
+                        "unit": "4px",
+                        "margin-desktop": "32px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #bccac1;
+            border-radius: 10px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
+<!-- SideNavBar (Predicted Anchor) -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface border-r border-outline-variant flex flex-col py-gutter-desktop z-50">
+<!-- Brand Header -->
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-on-primary-container font-headline-sm font-bold">
+                SC
+            </div>
+<div class="flex flex-col">
+<h1 class="text-on-surface font-headline-sm font-bold leading-tight">Success Central</h1>
+<span class="text-on-surface-variant font-body-sm opacity-70">SkillShikshya CRM</span>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[24px]">person_search</span>
+<span class="font-body-md">Leads</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[24px]">call</span>
+<span class="font-body-md">Calls</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[24px]">timer</span>
+<span class="font-body-md">Call Minutes</span>
+</a>
+<!-- Active State: Users -->
+<a class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 border-l-4 border-primary scale-[0.99] transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-body-md font-semibold">Users</span>
+</a>
+</nav>
+<!-- Footer Info -->
+<div class="px-6 pt-6 mt-auto border-t border-outline-variant/30 space-y-1">
+<p class="text-on-surface-variant font-label-md opacity-60">Skill Shikshya Pvt. Ltd.</p>
+<p class="text-on-surface-variant font-label-md opacity-60">Sankhamul, Kathmandu</p>
+</div>
+</aside>
+<!-- TopNavBar (Predicted Anchor) -->
+<header class="fixed top-0 right-0 h-16 ml-[280px] w-[calc(100%-280px)] bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-gutter-desktop z-40">
+<div class="flex items-center gap-4 flex-1 max-w-xl">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-body-sm focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/50 transition-all outline-none" placeholder="Search name, email, phone..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-low rounded-full relative transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="flex flex-col items-end">
+<span class="text-on-surface font-body-sm font-semibold">Test User</span>
+<span class="text-on-surface-variant text-[10px] font-label-md">Administrator</span>
+</div>
+<div class="w-10 h-10 rounded-full border-2 border-primary-container p-0.5 overflow-hidden ring-2 ring-transparent hover:ring-primary-container transition-all cursor-pointer">
+<img class="w-full h-full object-cover rounded-full" data-alt="A close-up high-quality portrait of a professional male administrator in his 30s with a warm, welcoming smile. The lighting is soft and corporate, set against a clean, modern workspace with blurred greenery in the background. The aesthetic is bright, professional, and reliable, matching the light-mode UI color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJZtZKNoK-V6wPOBqwi2rUFiKqgaUglWz8F9MICNXW2k_rc3XcMgd52VrT5uhz7DI7EWzx8m8FAJH0QvdZC8MTVctjVXb0nG4BRBIE-0ktzwEU7faE9OUv46ECG2KcdLRVp_srDHb3VDnn3f6Mf2Yl-BahkYDvV1Nd1yZ4xhmHkoWNblh6_vFYPxz5Q9W7KrsYL4Y5DOFzO7DdE7EvnXrdKx5T_W6hyybJKgmU3-CK_4l8XIYuxnXbhLUCwKnkiAdNlyBskgqiTz-e"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] pt-16 min-h-screen">
+<div class="max-w-[container-max] mx-auto p-margin-desktop">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Users</h2>
+<p class="text-on-surface-variant font-body-md mt-1">3 team members actively managing your CRM.</p>
+</div>
+<button class="flex items-center gap-2 bg-primary text-on-primary px-6 py-2.5 rounded-xl font-body-md font-semibold shadow-sm hover:bg-primary-container transition-all active:scale-95">
+<span class="material-symbols-outlined">add</span>
+                    Add New User
+                </button>
+</div>
+<!-- Bento Layout Content -->
+<div class="space-y-6">
+<!-- Main Table Section -->
+<div class="bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-[0_1px_3px_0_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)]">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Name</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Designation</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Role</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Phone</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Shift</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Call Target</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="px-6 py-4"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold font-headline-sm">TU</div>
+<div class="flex flex-col">
+<span class="text-on-surface font-body-md font-semibold">Test User</span>
+<span class="text-on-surface-variant text-body-sm">test1@skillshikshya.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">Agent</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">10:00–18:00</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">30 min/day</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-primary-fixed-dim/20 text-primary-container text-[11px] font-bold rounded-full uppercase tracking-tighter ring-1 ring-primary/10">Active</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-bold font-headline-sm">A</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="text-on-surface font-body-md font-semibold">admin.crm.skillshikshya</span>
+<span class="bg-secondary-container/50 text-on-secondary-container text-[10px] px-2 py-0.5 rounded font-bold">Admin</span>
+</div>
+<span class="text-on-surface-variant text-body-sm">admin@skillshikshya.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-primary-fixed-dim/20 text-primary-container text-[11px] font-bold rounded-full uppercase tracking-tighter ring-1 ring-primary/10">Active</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center font-bold font-headline-sm">TU</div>
+<div class="flex flex-col">
+<span class="text-on-surface font-body-md font-semibold">Test User</span>
+<span class="text-on-surface-variant text-body-sm">test@skillshikshya.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">Agent</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">—</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">10:00–18:00</td>
+<td class="px-6 py-4 text-on-surface-variant font-body-sm">30 min/day</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-primary-fixed-dim/20 text-primary-container text-[11px] font-bold rounded-full uppercase tracking-tighter ring-1 ring-primary/10">Active</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="px-6 py-4 bg-surface-container-low/50 border-t border-outline-variant flex items-center justify-between">
+<span class="text-body-sm text-on-surface-variant">Showing 3 of 3 members</span>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-surface-container-high rounded transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Secondary Info Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="col-span-1 md:col-span-2 glass-card p-6 rounded-2xl border border-outline-variant flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+                                Team Efficiency
+                            </h3>
+<span class="text-label-md text-on-surface-variant">Last 30 Days</span>
+</div>
+<div class="h-48 relative overflow-hidden rounded-xl bg-surface-container-low group">
+<div class="absolute inset-0 flex items-center justify-center">
+<p class="text-on-surface-variant font-body-sm opacity-50">Usage Analytics Visualization</p>
+</div>
+<!-- Mock Visualization -->
+<div class="absolute bottom-0 left-0 w-full flex items-end gap-1 px-4 h-full">
+<div class="w-full bg-primary/20 h-[30%] rounded-t transition-all group-hover:h-[45%]"></div>
+<div class="w-full bg-primary/20 h-[50%] rounded-t transition-all group-hover:h-[65%]"></div>
+<div class="w-full bg-primary h-[80%] rounded-t transition-all group-hover:h-[70%]"></div>
+<div class="w-full bg-primary/20 h-[40%] rounded-t transition-all group-hover:h-[55%]"></div>
+<div class="w-full bg-primary/20 h-[60%] rounded-t transition-all group-hover:h-[75%]"></div>
+<div class="w-full bg-primary/20 h-[20%] rounded-t transition-all group-hover:h-[35%]"></div>
+<div class="w-full bg-primary/20 h-[45%] rounded-t transition-all group-hover:h-[60%]"></div>
+</div>
+</div>
+</div>
+<div class="col-span-1 bg-primary text-on-primary p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden shadow-lg shadow-primary/20">
+<!-- Decorative element -->
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+<div>
+<span class="material-symbols-outlined text-4xl mb-4" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<h3 class="font-headline-sm mb-2">Invite more people</h3>
+<p class="font-body-sm opacity-80 mb-6">Scale your operations and hit targets faster by expanding your core team.</p>
+</div>
+<button class="w-full py-3 bg-white text-primary rounded-xl font-semibold font-body-md hover:bg-primary-fixed-dim transition-all active:scale-95 shadow-md">
+                            Generate Link
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Micro-interaction Script -->
+<script>
+        // Simple hover lift effect for cards
+        document.querySelectorAll('.glass-card, .bg-surface').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+    </script>
+</body></html>

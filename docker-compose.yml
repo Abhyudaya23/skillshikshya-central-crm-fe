@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    environment:
+      # Backend base URL for the nginx /api proxy; set in .env
+      VITE_API_URL: ${VITE_API_URL:-http://host.docker.internal:8188}
     ports:
       - "5173:80"
     extra_hosts:

@@ -1,0 +1,2124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Educational Institute CRM Prototype</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --surface: #ffffff;
+      --surface-soft: #f9fafb;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --success: #16a34a;
+      --success-soft: #ecfdf3;
+      --warning: #f59e0b;
+      --warning-soft: #fffbeb;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --blue-ink: #1d4ed8;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+      --radius: 8px;
+      --sidebar: 280px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: var(--bg);
+      letter-spacing: 0;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      border-right: 1px solid var(--line);
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      padding: 22px 18px;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 4px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: var(--primary);
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      font-weight: 800;
+      box-shadow: 0 10px 26px rgba(37, 99, 235, 0.25);
+    }
+
+    .brand-title {
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .nav-section {
+      color: #9ca3af;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin: 16px 10px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      min-height: 40px;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: #374151;
+      text-align: left;
+      font-weight: 650;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+      background: var(--primary-soft);
+      color: var(--blue-ink);
+    }
+
+    .nav-item.sub {
+      margin-left: 32px;
+      width: calc(100% - 32px);
+      color: #4b5563;
+      font-weight: 600;
+    }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: currentColor;
+    }
+
+    .icon svg {
+      width: 19px;
+      height: 19px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sidebar-card {
+      margin-top: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: var(--surface-soft);
+    }
+
+    .sidebar-card strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .workspace {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      min-height: 74px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 26px;
+    }
+
+    .mobile-menu {
+      display: none;
+    }
+
+    .search {
+      flex: 1;
+      min-width: 180px;
+      max-width: 620px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      color: var(--muted);
+      box-shadow: 0 1px 1px rgba(15, 23, 42, 0.03);
+    }
+
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .btn {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      color: #374151;
+      padding: 0 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 700;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .btn.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 12px 22px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn.danger {
+      border-color: #fecaca;
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .btn.icon-only {
+      width: 40px;
+      padding: 0;
+    }
+
+    .branch-picker,
+    .profile-pill {
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 11px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: var(--blue-ink);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .main {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .eyebrow {
+      color: var(--primary);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .kpi-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .analytics-grid {
+      grid-template-columns: 1.5fr 1fr;
+      align-items: stretch;
+    }
+
+    .three-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .two-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .card-pad {
+      padding: 18px;
+    }
+
+    .kpi-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 136px;
+    }
+
+    .kpi-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .kpi-value {
+      font-size: 30px;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .trend {
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--success-soft);
+      align-self: flex-start;
+    }
+
+    .trend.warn {
+      color: #b45309;
+      background: var(--warning-soft);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 18px 0;
+    }
+
+    .card-meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .funnel {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(80px, 1fr));
+      gap: 10px;
+      padding: 18px;
+    }
+
+    .funnel-step {
+      min-height: 116px;
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .funnel-step:before {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: var(--fill);
+      background: var(--primary-soft);
+      z-index: 0;
+    }
+
+    .funnel-step > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .funnel-title {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .funnel-value {
+      font-size: 26px;
+      font-weight: 850;
+    }
+
+    .bar-chart {
+      padding: 18px;
+      height: 282px;
+      display: grid;
+      grid-template-columns: 44px repeat(7, 1fr);
+      gap: 12px;
+      align-items: end;
+    }
+
+    .axis {
+      height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #9ca3af;
+      font-size: 11px;
+      text-align: right;
+      padding-right: 8px;
+      border-right: 1px solid var(--line);
+    }
+
+    .bar-wrap {
+      height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .bar {
+      min-height: 18px;
+      border-radius: 6px 6px 2px 2px;
+      background: var(--primary);
+    }
+
+    .bar.alt {
+      background: #10b981;
+    }
+
+    .bar-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pie-wrap {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 22px 18px 18px;
+    }
+
+    .pie {
+      width: 174px;
+      height: 174px;
+      border-radius: 50%;
+      background: conic-gradient(#2563eb 0 34%, #16a34a 34% 57%, #f59e0b 57% 76%, #dc2626 76% 88%, #64748b 88% 100%);
+      position: relative;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+    }
+
+    .pie:after {
+      content: "";
+      position: absolute;
+      inset: 42px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #374151;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: 8px;
+      background: var(--primary);
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+    }
+
+    .activity-row,
+    .follow-row,
+    .leader-row,
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+    }
+
+    .row-title {
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .row-meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .badge.hot,
+    .badge.high,
+    .badge.overdue {
+      color: #b91c1c;
+      background: var(--danger-soft);
+    }
+
+    .badge.warm,
+    .badge.pending {
+      color: #b45309;
+      background: var(--warning-soft);
+    }
+
+    .badge.cold {
+      color: #475569;
+      background: #f1f5f9;
+    }
+
+    .badge.new,
+    .badge.open {
+      color: var(--blue-ink);
+      background: var(--primary-soft);
+    }
+
+    .badge.enrolled,
+    .badge.done,
+    .badge.success {
+      color: #15803d;
+      background: var(--success-soft);
+    }
+
+    .badge.lost {
+      color: #7f1d1d;
+      background: #fee2e2;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 14px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .field label {
+      color: #374151;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .field input,
+    .field select,
+    .field textarea,
+    .inline-input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      min-height: 42px;
+      background: #ffffff;
+      color: var(--text);
+      padding: 10px 12px;
+      outline: 0;
+    }
+
+    .field textarea {
+      min-height: 116px;
+      resize: vertical;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .form-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .span-2 {
+      grid-column: span 2;
+    }
+
+    .span-3 {
+      grid-column: 1 / -1;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-top: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1180px;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-weight: 850;
+    }
+
+    td {
+      color: #374151;
+      font-size: 14px;
+    }
+
+    .name-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 850;
+      color: var(--text);
+    }
+
+    .score {
+      width: 54px;
+      height: 8px;
+      border-radius: 99px;
+      background: #e5e7eb;
+      overflow: hidden;
+      display: inline-flex;
+      vertical-align: middle;
+      margin-right: 7px;
+    }
+
+    .score span {
+      display: block;
+      height: 100%;
+      background: var(--success);
+      width: var(--score);
+    }
+
+    .action-icons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mini-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: #475569;
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .lead-hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: center;
+      padding: 22px;
+    }
+
+    .hero-main {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hero-avatar {
+      width: 68px;
+      height: 68px;
+      border-radius: 16px;
+      background: var(--primary-soft);
+      color: var(--blue-ink);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 850;
+      flex: 0 0 auto;
+    }
+
+    .hero-facts {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      overflow: auto;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      min-height: 46px;
+      border: 0;
+      background: transparent;
+      padding: 0 12px;
+      font-weight: 800;
+      color: #64748b;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .info-box {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: var(--surface-soft);
+    }
+
+    .info-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .info-value {
+      margin-top: 5px;
+      font-weight: 800;
+      color: #1f2937;
+    }
+
+    .timeline {
+      position: relative;
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .timeline:before {
+      content: "";
+      position: absolute;
+      top: 30px;
+      bottom: 30px;
+      left: 35px;
+      width: 2px;
+      background: var(--line);
+    }
+
+    .timeline-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .timeline-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      z-index: 1;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+    }
+
+    .timeline-body {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: #ffffff;
+    }
+
+    .timeline-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 850;
+      margin-bottom: 6px;
+    }
+
+    .timeline-copy {
+      color: #4b5563;
+      line-height: 1.5;
+    }
+
+    .wizard {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .wizard-step {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      background: var(--surface-soft);
+      position: relative;
+    }
+
+    .wizard-step:not(:last-child):after {
+      content: ">";
+      position: absolute;
+      right: -13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-weight: 850;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: var(--primary);
+      font-weight: 850;
+      margin-bottom: 14px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .mini-chart {
+      height: 118px;
+      display: flex;
+      align-items: end;
+      gap: 8px;
+      padding-top: 18px;
+    }
+
+    .mini-chart span {
+      flex: 1;
+      border-radius: 5px 5px 2px 2px;
+      background: var(--primary);
+      height: var(--h);
+      min-height: 14px;
+    }
+
+    .mini-chart span:nth-child(2n) {
+      background: var(--success);
+    }
+
+    .empty-state,
+    .loading-state {
+      border: 1px dashed #cbd5e1;
+      border-radius: var(--radius);
+      min-height: 188px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 22px;
+      background: #ffffff;
+      color: var(--muted);
+    }
+
+    .empty-state strong,
+    .loading-state strong {
+      display: block;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .skeleton {
+      width: min(420px, 100%);
+      display: grid;
+      gap: 12px;
+    }
+
+    .skeleton span {
+      display: block;
+      height: 14px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #e5e7eb, #f8fafc, #e5e7eb);
+      background-size: 220% 100%;
+      animation: shimmer 1.6s infinite;
+    }
+
+    @keyframes shimmer {
+      to { background-position: -220% 0; }
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 16px;
+    }
+
+    .settings-menu {
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+      align-self: start;
+    }
+
+    .settings-menu button {
+      min-height: 40px;
+      border-radius: var(--radius);
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 0 12px;
+      color: #475569;
+      font-weight: 800;
+    }
+
+    .settings-menu button.active {
+      background: var(--primary-soft);
+      color: var(--blue-ink);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.38);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal {
+      width: min(620px, 100%);
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: #ffffff;
+      border-radius: var(--radius);
+      box-shadow: 0 26px 80px rgba(15, 23, 42, 0.28);
+      border: 1px solid var(--line);
+    }
+
+    .modal-head,
+    .modal-foot {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-head {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-foot {
+      border-top: 1px solid var(--line);
+      justify-content: flex-end;
+    }
+
+    .modal-body {
+      padding: 18px;
+    }
+
+    .notification-panel {
+      position: fixed;
+      top: 84px;
+      right: 24px;
+      width: min(380px, calc(100vw - 40px));
+      z-index: 40;
+      display: none;
+    }
+
+    .notification-panel.active {
+      display: block;
+    }
+
+    .notification-card {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+
+    .notice-item {
+      display: flex;
+      gap: 11px;
+      padding: 12px;
+      border-radius: var(--radius);
+    }
+
+    .notice-item:hover {
+      background: var(--surface-soft);
+    }
+
+    .mobile-overlay {
+      display: none;
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --surface: #111827;
+      --surface-soft: #172033;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --line: #263244;
+      --primary-soft: #102449;
+      --success-soft: #0d2b1b;
+      --warning-soft: #2c2108;
+      --danger-soft: #321216;
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+    }
+
+    body.dark .sidebar,
+    body.dark .topbar,
+    body.dark .search,
+    body.dark .btn,
+    body.dark .branch-picker,
+    body.dark .profile-pill,
+    body.dark .card,
+    body.dark .modal,
+    body.dark .timeline-body,
+    body.dark .notification-card,
+    body.dark .empty-state,
+    body.dark .loading-state,
+    body.dark .mini-btn,
+    body.dark .field input,
+    body.dark .field select,
+    body.dark .field textarea,
+    body.dark .inline-input {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    body.dark th {
+      background: #172033;
+    }
+
+    body.dark td,
+    body.dark .row-meta,
+    body.dark .timeline-copy,
+    body.dark .field label,
+    body.dark .info-value {
+      color: #cbd5e1;
+    }
+
+    @media (max-width: 1180px) {
+      .kpi-grid,
+      .report-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .analytics-grid,
+      .detail-grid,
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-wrap: wrap;
+      }
+
+      .topbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+        overflow: auto;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(300px, 82vw);
+        z-index: 60;
+        transform: translateX(-105%);
+        transition: transform 0.2s ease;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .mobile-overlay.active {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.36);
+        z-index: 55;
+      }
+
+      .mobile-menu {
+        display: inline-flex;
+      }
+
+      .main {
+        padding: 20px;
+      }
+
+      .page-header,
+      .lead-hero,
+      .hero-main {
+        flex-direction: column;
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .hero-actions {
+        justify-content: flex-start;
+      }
+
+      .kpi-grid,
+      .three-grid,
+      .two-grid,
+      .form-grid,
+      .form-grid.two,
+      .report-grid,
+      .wizard,
+      .funnel,
+      .pie-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .span-2,
+      .span-3 {
+        grid-column: auto;
+      }
+
+      .wizard-step:after {
+        display: none;
+      }
+
+      .bar-chart {
+        grid-template-columns: 32px repeat(7, minmax(28px, 1fr));
+        gap: 8px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SC</div>
+        <div>
+          <div class="brand-title">SkillShikshya CRM</div>
+          <div class="brand-subtitle">Institute operations suite</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-item active" data-page="dashboard"><span class="icon" data-i="grid"></span>Dashboard</button>
+        <div class="nav-section">CRM</div>
+        <button class="nav-item sub" data-page="leads"><span class="icon" data-i="users"></span>Leads</button>
+        <button class="nav-item sub" data-page="timeline"><span class="icon" data-i="clock"></span>Follow Ups</button>
+        <button class="nav-item sub" data-page="timeline"><span class="icon" data-i="activity"></span>Activities</button>
+        <div class="nav-section">Institute</div>
+        <button class="nav-item" data-page="conversion"><span class="icon" data-i="layers"></span>Admissions</button>
+        <button class="nav-item" data-page="students"><span class="icon" data-i="id"></span>Students</button>
+        <button class="nav-item" data-page="courses"><span class="icon" data-i="book"></span>Courses</button>
+        <button class="nav-item" data-page="batches"><span class="icon" data-i="calendar"></span>Batches</button>
+        <button class="nav-item" data-page="trainers"><span class="icon" data-i="briefcase"></span>Trainers</button>
+        <div class="nav-section">Business</div>
+        <button class="nav-item" data-page="finance"><span class="icon" data-i="wallet"></span>Finance</button>
+        <button class="nav-item" data-page="reports"><span class="icon" data-i="chart"></span>Reports</button>
+        <button class="nav-item" data-page="settings"><span class="icon" data-i="settings"></span>Settings</button>
+      </nav>
+
+      <div class="sidebar-card">
+        <strong>Multi-branch snapshot</strong>
+        <span>Kathmandu branch is pacing 18% above weekly admission target.</span>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <button class="btn icon-only mobile-menu" id="mobileMenu" aria-label="Open navigation"><span class="icon" data-i="menu"></span></button>
+        <div class="search">
+          <span class="icon" data-i="search"></span>
+          <input aria-label="Global search" placeholder="Search leads, students, courses, invoices...">
+        </div>
+        <div class="topbar-actions">
+          <button class="btn primary" data-page-shortcut="createLead"><span class="icon" data-i="plus"></span>Quick Create</button>
+          <button class="btn icon-only" id="notificationToggle" aria-label="Notifications"><span class="icon" data-i="bell"></span></button>
+          <div class="branch-picker"><span class="icon" data-i="building"></span>Kathmandu</div>
+          <button class="btn icon-only" id="themeToggle" aria-label="Toggle dark mode"><span class="icon" data-i="moon"></span></button>
+          <div class="profile-pill"><span class="avatar">AS</span>Admin</div>
+        </div>
+      </header>
+
+      <div class="notification-panel" id="notificationPanel">
+        <div class="notification-card">
+          <div class="notice-item">
+            <span class="icon" data-i="bell"></span>
+            <div><div class="row-title">4 overdue followups</div><div class="row-meta">Two high-priority leads need action today.</div></div>
+          </div>
+          <div class="notice-item">
+            <span class="icon" data-i="wallet"></span>
+            <div><div class="row-title">Payment received</div><div class="row-meta">NPR 45,000 posted for BIM Foundation.</div></div>
+          </div>
+          <div class="notice-item">
+            <span class="icon" data-i="users"></span>
+            <div><div class="row-title">New import complete</div><div class="row-meta">78 Facebook campaign leads are ready.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <main class="main">
+        <section class="page active" id="dashboard">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">Executive dashboard</div>
+              <h1>Institute CRM command center</h1>
+              <p class="page-subtitle">Track demand, counselor execution, admissions movement, and revenue across branches.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn"><span class="icon" data-i="download"></span>Export</button>
+              <button class="btn primary"><span class="icon" data-i="calendar"></span>This Week</button>
+            </div>
+          </div>
+
+          <div class="grid kpi-grid">
+            <article class="card card-pad kpi-card">
+              <div class="kpi-top"><span class="kpi-label">New Leads</span><span class="icon" data-i="users"></span></div>
+              <div class="kpi-value">284</div>
+              <span class="trend">+12.8% vs last week</span>
+            </article>
+            <article class="card card-pad kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Today's Followups</span><span class="icon" data-i="clock"></span></div>
+              <div class="kpi-value">46</div>
+              <span class="trend warn">8 high priority</span>
+            </article>
+            <article class="card card-pad kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Overdue</span><span class="icon" data-i="alert"></span></div>
+              <div class="kpi-value">17</div>
+              <span class="trend warn">Needs attention</span>
+            </article>
+            <article class="card card-pad kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Admissions</span><span class="icon" data-i="layers"></span></div>
+              <div class="kpi-value">39</div>
+              <span class="trend">+7 this month</span>
+            </article>
+            <article class="card card-pad kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Revenue</span><span class="icon" data-i="wallet"></span></div>
+              <div class="kpi-value">NPR 3.2M</div>
+              <span class="trend">82% collected</span>
+            </article>
+          </div>
+
+          <div class="grid analytics-grid">
+            <section class="card">
+              <div class="card-header">
+                <div><h2>Lead Funnel</h2><p class="card-meta">Inquiry to enrollment by current stage</p></div>
+                <button class="btn"><span class="icon" data-i="filter"></span>Segment</button>
+              </div>
+              <div class="funnel">
+                <div class="funnel-step" style="--fill: 82%"><div class="funnel-title">New</div><div class="funnel-value">284</div><span class="badge new">100%</span></div>
+                <div class="funnel-step" style="--fill: 64%"><div class="funnel-title">Contacted</div><div class="funnel-value">196</div><span class="badge open">69%</span></div>
+                <div class="funnel-step" style="--fill: 47%"><div class="funnel-title">Demo</div><div class="funnel-value">124</div><span class="badge warm">44%</span></div>
+                <div class="funnel-step" style="--fill: 32%"><div class="funnel-title">Admission</div><div class="funnel-value">73</div><span class="badge hot">26%</span></div>
+                <div class="funnel-step" style="--fill: 20%"><div class="funnel-title">Enrolled</div><div class="funnel-value">39</div><span class="badge enrolled">14%</span></div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-header">
+                <div><h2>Lead Sources</h2><p class="card-meta">Top acquisition channels</p></div>
+              </div>
+              <div class="pie-wrap">
+                <div class="pie" aria-label="Lead source pie chart"></div>
+                <div class="legend">
+                  <div class="legend-row"><span><i class="dot"></i>Facebook Ads</span><strong>34%</strong></div>
+                  <div class="legend-row"><span><i class="dot" style="background:#16a34a"></i>Referral</span><strong>23%</strong></div>
+                  <div class="legend-row"><span><i class="dot" style="background:#f59e0b"></i>Website</span><strong>19%</strong></div>
+                  <div class="legend-row"><span><i class="dot" style="background:#dc2626"></i>Walk-in</span><strong>12%</strong></div>
+                  <div class="legend-row"><span><i class="dot" style="background:#64748b"></i>Other</span><strong>12%</strong></div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="grid three-grid">
+            <section class="card">
+              <div class="card-header"><div><h2>Recent Activities</h2><p class="card-meta">Latest CRM touchpoints</p></div></div>
+              <div class="list">
+                <div class="activity-row"><div><div class="row-title">Call completed with Riya Shrestha</div><div class="row-meta">Aarav noted interest in Data Analytics.</div></div><span class="badge done">Call</span></div>
+                <div class="activity-row"><div><div class="row-title">Status changed to Demo Scheduled</div><div class="row-meta">By Sushmita, 18 minutes ago.</div></div><span class="badge new">Status</span></div>
+                <div class="activity-row"><div><div class="row-title">WhatsApp sent to Prabin KC</div><div class="row-meta">Course brochure and fee structure.</div></div><span class="badge warm">Message</span></div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-header"><div><h2>Upcoming Followups</h2><p class="card-meta">Next counselor actions</p></div></div>
+              <div class="list">
+                <div class="follow-row"><div><div class="row-title">Riya Shrestha</div><div class="row-meta">Today, 11:30 AM - fee discussion</div></div><span class="badge hot">Hot</span></div>
+                <div class="follow-row"><div><div class="row-title">Sandeep Rai</div><div class="row-meta">Today, 2:15 PM - demo reminder</div></div><span class="badge warm">Warm</span></div>
+                <div class="follow-row"><div><div class="row-title">Nisha Tamang</div><div class="row-meta">Tomorrow, 9:30 AM - parent call</div></div><span class="badge cold">Cold</span></div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-header"><div><h2>Counselor Leaderboard</h2><p class="card-meta">Conversions this month</p></div></div>
+              <div class="list">
+                <div class="leader-row"><div><div class="row-title">Aarav Sharma</div><div class="row-meta">31 admissions, 88 followups</div></div><strong>94%</strong></div>
+                <div class="leader-row"><div><div class="row-title">Sushmita Karki</div><div class="row-meta">24 admissions, 71 followups</div></div><strong>89%</strong></div>
+                <div class="leader-row"><div><div class="row-title">Bibek Adhikari</div><div class="row-meta">19 admissions, 66 followups</div></div><strong>82%</strong></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="leads">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">CRM workspace</div>
+              <h1>Lead List</h1>
+              <p class="page-subtitle">Prioritize, filter, import, export, and work leads from one high-density CRM view.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn"><span class="icon" data-i="upload"></span>Import</button>
+              <button class="btn"><span class="icon" data-i="download"></span>Export</button>
+              <button class="btn primary" data-page-shortcut="createLead"><span class="icon" data-i="plus"></span>Create Lead</button>
+            </div>
+          </div>
+
+          <section class="card">
+            <div class="toolbar">
+              <div class="toolbar-group">
+                <input class="inline-input" style="width:260px" placeholder="Search lead name, phone, ID">
+                <button class="btn"><span class="icon" data-i="filter"></span>Advanced Filters</button>
+                <button class="btn"><span class="icon" data-i="bookmark"></span>Saved Views</button>
+              </div>
+              <div class="toolbar-group">
+                <button class="btn"><span class="icon" data-i="check"></span>Bulk Actions</button>
+                <button class="btn" data-modal="followupModal"><span class="icon" data-i="calendar"></span>Schedule Followup</button>
+                <button class="btn" data-modal="activityModal"><span class="icon" data-i="phone"></span>Log Call</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" aria-label="Select all leads"></th>
+                    <th>Lead ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Interested Course</th>
+                    <th>Source</th>
+                    <th>Campaign</th>
+                    <th>Counselor</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Lead Score</th>
+                    <th>Next Followup</th>
+                    <th>Created Date</th>
+                    <th>Last Contact</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="checkbox"></td>
+                    <td>LD-1048</td>
+                    <td><div class="name-cell"><span class="avatar">RS</span>Riya Shrestha</div></td>
+                    <td>9841-220-118</td>
+                    <td>Data Analytics</td>
+                    <td>Facebook</td>
+                    <td>Dashain Intake</td>
+                    <td>Aarav Sharma</td>
+                    <td><span class="badge hot">Hot</span></td>
+                    <td><span class="badge new">New</span></td>
+                    <td><span class="score" style="--score:88%"><span></span></span>88</td>
+                    <td><span class="badge pending">Today 11:30</span></td>
+                    <td>Jul 18, 2026</td>
+                    <td>12 min ago</td>
+                    <td><div class="action-icons"><button class="mini-btn" data-page-shortcut="leadDetails"><span class="icon" data-i="eye"></span></button><button class="mini-btn" data-modal="activityModal"><span class="icon" data-i="phone"></span></button><button class="mini-btn"><span class="icon" data-i="more"></span></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"></td>
+                    <td>LD-1047</td>
+                    <td><div class="name-cell"><span class="avatar">SK</span>Sandeep KC</div></td>
+                    <td>9803-884-440</td>
+                    <td>Python Full Stack</td>
+                    <td>Referral</td>
+                    <td>Alumni Circle</td>
+                    <td>Sushmita Karki</td>
+                    <td><span class="badge warm">Warm</span></td>
+                    <td><span class="badge open">Demo</span></td>
+                    <td><span class="score" style="--score:74%"><span></span></span>74</td>
+                    <td>Today 2:15</td>
+                    <td>Jul 17, 2026</td>
+                    <td>1 hour ago</td>
+                    <td><div class="action-icons"><button class="mini-btn" data-page-shortcut="leadDetails"><span class="icon" data-i="eye"></span></button><button class="mini-btn" data-modal="activityModal"><span class="icon" data-i="phone"></span></button><button class="mini-btn"><span class="icon" data-i="more"></span></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"></td>
+                    <td>LD-1046</td>
+                    <td><div class="name-cell"><span class="avatar">NT</span>Nisha Tamang</div></td>
+                    <td>9860-771-231</td>
+                    <td>UI/UX Design</td>
+                    <td>Website</td>
+                    <td>Portfolio Bootcamp</td>
+                    <td>Bibek Adhikari</td>
+                    <td><span class="badge cold">Cold</span></td>
+                    <td><span class="badge lost">Lost</span></td>
+                    <td><span class="score" style="--score:32%"><span></span></span>32</td>
+                    <td>No followup</td>
+                    <td>Jul 14, 2026</td>
+                    <td>3 days ago</td>
+                    <td><div class="action-icons"><button class="mini-btn" data-page-shortcut="leadDetails"><span class="icon" data-i="eye"></span></button><button class="mini-btn" data-modal="followupModal"><span class="icon" data-i="calendar"></span></button><button class="mini-btn"><span class="icon" data-i="more"></span></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"></td>
+                    <td>LD-1045</td>
+                    <td><div class="name-cell"><span class="avatar">PK</span>Prabin KC</div></td>
+                    <td>9819-555-290</td>
+                    <td>Digital Marketing</td>
+                    <td>Walk-in</td>
+                    <td>Summer Skills</td>
+                    <td>Aarav Sharma</td>
+                    <td><span class="badge hot">Hot</span></td>
+                    <td><span class="badge enrolled">Enrolled</span></td>
+                    <td><span class="score" style="--score:96%"><span></span></span>96</td>
+                    <td>Completed</td>
+                    <td>Jul 11, 2026</td>
+                    <td>Today</td>
+                    <td><div class="action-icons"><button class="mini-btn" data-page-shortcut="leadDetails"><span class="icon" data-i="eye"></span></button><button class="mini-btn"><span class="icon" data-i="wallet"></span></button><button class="mini-btn"><span class="icon" data-i="more"></span></button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="grid two-grid">
+            <div class="empty-state"><div><strong>No leads in "Dormant - Enterprise"</strong><span>Create a saved view or change filters to populate this segment.</span></div></div>
+            <div class="loading-state"><div class="skeleton"><strong>Loading imported leads</strong><span></span><span style="width:82%"></span><span style="width:62%"></span></div></div>
+          </div>
+        </section>
+
+        <section class="page" id="createLead">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">Lead intake</div>
+              <h1>Create Lead</h1>
+              <p class="page-subtitle">Capture inquiry context, ownership, course interest, and first followup plan.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn"><span class="icon" data-i="x"></span>Discard</button>
+              <button class="btn"><span class="icon" data-i="bookmark"></span>Save Draft</button>
+              <button class="btn primary"><span class="icon" data-i="check"></span>Save Lead</button>
+            </div>
+          </div>
+
+          <div class="grid two-grid">
+            <section class="card card-pad">
+              <h2>Basic Information</h2>
+              <p class="card-meta">Contact details used by counselors and admissions teams.</p>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Full Name</label><input value="Anisha Gurung"></div>
+                <div class="field"><label>Phone</label><input value="9840-224-891"></div>
+                <div class="field"><label>Secondary Phone</label><input placeholder="Optional"></div>
+                <div class="field"><label>Email</label><input value="anisha.gurung@example.com"></div>
+                <div class="field span-2"><label>Address</label><input value="Maitidevi, Kathmandu"></div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <h2>Classification</h2>
+              <p class="card-meta">Organize source, intent, branch, priority, and owner.</p>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Lead Type</label><select><option>Course Inquiry</option><option>Master Class</option><option>Corporate</option><option>General Inquiry</option></select></div>
+                <div class="field"><label>Lead Source</label><select><option>Facebook Ads</option><option>Referral</option><option>Website</option><option>Walk-in</option></select></div>
+                <div class="field"><label>Campaign</label><select><option>Dashain Intake</option><option>Summer Skills</option><option>Alumni Circle</option></select></div>
+                <div class="field"><label>Branch</label><select><option>Kathmandu</option><option>Pokhara</option><option>Butwal</option></select></div>
+                <div class="field"><label>Priority</label><select><option>Hot</option><option>Warm</option><option>Cold</option></select></div>
+                <div class="field"><label>Assigned Counselor</label><select><option>Aarav Sharma</option><option>Sushmita Karki</option><option>Bibek Adhikari</option></select></div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <h2>Course Interests</h2>
+              <p class="card-meta">Support one primary course and multiple secondary interests.</p>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Primary Course</label><select><option>Python Full Stack</option><option>Data Analytics</option><option>UI/UX Design</option></select></div>
+                <div class="field"><label>Additional Courses</label><input value="Digital Marketing, IELTS Prep"></div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <h2>Dynamic Fields</h2>
+              <p class="card-meta">Placeholder fields change based on lead type.</p>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Inquiry Goal</label><select><option>Career switch</option><option>Upskill</option><option>Academic requirement</option></select></div>
+                <div class="field"><label>Preferred Class Mode</label><select><option>Physical</option><option>Online</option><option>Hybrid</option></select></div>
+                <div class="field"><label>Preferred Intake</label><input value="August 2026"></div>
+                <div class="field"><label>Budget Range</label><input value="NPR 35,000 - 50,000"></div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <h2>Follow Up</h2>
+              <p class="card-meta">Create the first planned touchpoint without leaving the form.</p>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Next Followup</label><input type="date" value="2026-07-22"></div>
+                <div class="field"><label>Reminder</label><select><option>30 minutes before</option><option>1 hour before</option><option>1 day before</option></select></div>
+                <div class="field span-2"><label>Purpose</label><input value="Discuss batch timing and scholarship options"></div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <h2>Notes</h2>
+              <p class="card-meta">Internal counseling notes and buying signals.</p>
+              <div class="field" style="margin-top:18px"><label>Notes</label><textarea>Interested in weekday evening classes. Parent wants payment installment details.</textarea></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="leadDetails">
+          <section class="card lead-hero">
+            <div class="hero-main">
+              <div class="hero-avatar">RS</div>
+              <div>
+                <div class="eyebrow">Lead LD-1048</div>
+                <h1>Riya Shrestha</h1>
+                <p class="page-subtitle">9841-220-118 - Data Analytics - Assigned to Aarav Sharma</p>
+                <div class="hero-facts">
+                  <span class="badge new">New</span>
+                  <span class="badge hot">Hot Priority</span>
+                  <span class="badge success">Score 88</span>
+                  <span class="badge pending">Followup today</span>
+                </div>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <button class="btn"><span class="icon" data-i="edit"></span>Edit</button>
+              <button class="btn" data-modal="activityModal"><span class="icon" data-i="phone"></span>Call</button>
+              <button class="btn"><span class="icon" data-i="message"></span>WhatsApp</button>
+              <button class="btn"><span class="icon" data-i="users"></span>Assign</button>
+              <button class="btn primary" data-page-shortcut="conversion"><span class="icon" data-i="layers"></span>Convert</button>
+              <button class="btn danger"><span class="icon" data-i="archive"></span>Archive</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="tabs">
+              <button class="tab active">Overview</button>
+              <button class="tab" data-page-shortcut="timeline">Timeline</button>
+              <button class="tab">Activities</button>
+              <button class="tab">Followups</button>
+              <button class="tab">Documents</button>
+              <button class="tab">Enrollment</button>
+              <button class="tab">Payments</button>
+              <button class="tab">Audit Log</button>
+            </div>
+            <div class="detail-grid">
+              <div class="grid">
+                <div class="info-grid">
+                  <div class="info-box"><div class="info-label">Lead Source</div><div class="info-value">Facebook Ads</div></div>
+                  <div class="info-box"><div class="info-label">Campaign</div><div class="info-value">Dashain Intake</div></div>
+                  <div class="info-box"><div class="info-label">Preferred Course</div><div class="info-value">Data Analytics</div></div>
+                  <div class="info-box"><div class="info-label">Preferred Branch</div><div class="info-value">Kathmandu</div></div>
+                  <div class="info-box"><div class="info-label">Expected Revenue</div><div class="info-value">NPR 42,000</div></div>
+                  <div class="info-box"><div class="info-label">Created Date</div><div class="info-value">Jul 18, 2026</div></div>
+                </div>
+                <div class="card card-pad" style="box-shadow:none">
+                  <h2>Opportunity Notes</h2>
+                  <p class="page-subtitle">Riya wants a career-focused analytics path with weekend labs. She is comparing two institutes and prefers a flexible payment schedule.</p>
+                </div>
+                <div class="card" style="box-shadow:none">
+                  <div class="card-header">
+                    <div>
+                      <h2>Call History</h2>
+                      <p class="card-meta">Multiple calls are stored against this lead with timestamp, duration, outcome, owner, and next action.</p>
+                    </div>
+                    <button class="btn" data-modal="activityModal"><span class="icon" data-i="phone"></span>Log Call</button>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Timestamp</th>
+                          <th>Direction</th>
+                          <th>Caller</th>
+                          <th>Duration</th>
+                          <th>Outcome</th>
+                          <th>Notes</th>
+                          <th>Next Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Jul 21, 2026 10:42 AM</td>
+                          <td>Outbound</td>
+                          <td>Aarav Sharma</td>
+                          <td>08m 42s</td>
+                          <td><span class="badge hot">Interested</span></td>
+                          <td>Asked for installment and placement details.</td>
+                          <td>Parent call at 11:30 AM</td>
+                        </tr>
+                        <tr>
+                          <td>Jul 20, 2026 05:09 PM</td>
+                          <td>Inbound</td>
+                          <td>Aarav Sharma</td>
+                          <td>03m 18s</td>
+                          <td><span class="badge warm">Callback</span></td>
+                          <td>Student requested brochure on WhatsApp.</td>
+                          <td>Send fee plan</td>
+                        </tr>
+                        <tr>
+                          <td>Jul 18, 2026 10:05 AM</td>
+                          <td>Outbound</td>
+                          <td>Sushmita Karki</td>
+                          <td>06m 11s</td>
+                          <td><span class="badge success">Qualified</span></td>
+                          <td>Confirmed course interest and weekend availability.</td>
+                          <td>Schedule demo class</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <div class="grid">
+                <div class="card card-pad" style="box-shadow:none">
+                  <h2>Next Best Actions</h2>
+                  <div class="list" style="padding:14px 0 0">
+                    <div class="follow-row"><div><div class="row-title">Call at 11:30 AM</div><div class="row-meta">Confirm demo attendance</div></div><span class="badge hot">Due</span></div>
+                    <div class="follow-row"><div><div class="row-title">Send payment plan</div><div class="row-meta">Installment details requested</div></div><span class="badge warm">Draft</span></div>
+                  </div>
+                </div>
+                <div class="empty-state"><div><strong>No documents uploaded</strong><span>Enrollment documents will appear here after conversion.</span></div></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="page" id="timeline">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">Customer journey</div>
+              <h1>CRM Timeline</h1>
+              <p class="page-subtitle">A complete activity history for calls, messages, status changes, payments, and enrollment events.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn" data-modal="activityModal"><span class="icon" data-i="phone"></span>Log Call</button>
+              <button class="btn" data-modal="followupModal"><span class="icon" data-i="calendar"></span>Add Followup</button>
+            </div>
+          </div>
+          <section class="card">
+            <div class="timeline">
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="plus"></span></div><div class="timeline-body"><div class="timeline-title"><span>Lead Created</span><span class="row-meta">Jul 18, 2026 09:12</span></div><p class="timeline-copy">System captured lead from Facebook Dashain Intake campaign. Owner assigned to Aarav Sharma.</p><div class="row-meta">By Import Automation</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="phone"></span></div><div class="timeline-body"><div class="timeline-title"><span>Call - Qualified</span><span class="row-meta">Jul 18, 2026 10:05 - 06m 11s</span></div><p class="timeline-copy">Counselor discussed class format, batch timing, and expected course outcomes.</p><div class="row-meta">Outbound by Sushmita Karki</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="message"></span></div><div class="timeline-body"><div class="timeline-title"><span>WhatsApp</span><span class="row-meta">Jul 18, 2026 10:21</span></div><p class="timeline-copy">Sent brochure, syllabus, trainer profile, and fee structure.</p><div class="row-meta">By Aarav Sharma</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="activity"></span></div><div class="timeline-body"><div class="timeline-title"><span>Status Changed</span><span class="row-meta">Jul 19, 2026 13:40</span></div><p class="timeline-copy">Status moved from New to Demo Scheduled after confirming Saturday demo class.</p><div class="row-meta">By Sushmita Karki</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="users"></span></div><div class="timeline-body"><div class="timeline-title"><span>Assignment Changed</span><span class="row-meta">Jul 19, 2026 14:12</span></div><p class="timeline-copy">Lead temporarily reassigned for evening followup coverage.</p><div class="row-meta">By Branch Manager</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="edit"></span></div><div class="timeline-body"><div class="timeline-title"><span>Note</span><span class="row-meta">Jul 20, 2026 17:09</span></div><p class="timeline-copy">Student requested installment options and asked about job placement support.</p><div class="row-meta">By Aarav Sharma</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="phone"></span></div><div class="timeline-body"><div class="timeline-title"><span>Call - Callback Requested</span><span class="row-meta">Jul 20, 2026 17:09 - 03m 18s</span></div><p class="timeline-copy">Riya called back after reviewing the brochure and asked for a parent discussion slot.</p><div class="row-meta">Inbound by Aarav Sharma</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="phone"></span></div><div class="timeline-body"><div class="timeline-title"><span>Call - Interested</span><span class="row-meta">Jul 21, 2026 10:42 - 08m 42s</span></div><p class="timeline-copy">Discussed payment installment, placement support, and weekend lab timing.</p><div class="row-meta">Outbound by Aarav Sharma</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="calendar"></span></div><div class="timeline-body"><div class="timeline-title"><span>Meeting</span><span class="row-meta">Jul 21, 2026 11:30</span></div><p class="timeline-copy">Parent meeting scheduled for fee confirmation and batch finalization.</p><div class="row-meta">By Aarav Sharma</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="book"></span></div><div class="timeline-body"><div class="timeline-title"><span>Demo Class</span><span class="row-meta">Jul 22, 2026 15:00</span></div><p class="timeline-copy">Placeholder upcoming event for analytics demo class attendance.</p><div class="row-meta">By Training Desk</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="wallet"></span></div><div class="timeline-body"><div class="timeline-title"><span>Payment</span><span class="row-meta">Pending</span></div><p class="timeline-copy">Admission payment event will appear once enrollment finance is created.</p><div class="row-meta">System placeholder</div></div></div>
+              <div class="timeline-item"><div class="timeline-icon"><span class="icon" data-i="id"></span></div><div class="timeline-body"><div class="timeline-title"><span>Enrollment</span><span class="row-meta">Pending</span></div><p class="timeline-copy">Student enrollment event will be appended after successful conversion.</p><div class="row-meta">System placeholder</div></div></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="page" id="conversion">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">Admissions workflow</div>
+              <h1>Student Conversion</h1>
+              <p class="page-subtitle">Move qualified leads into admission, enrollment, and student records with clear stage ownership.</p>
+            </div>
+            <button class="btn primary"><span class="icon" data-i="check"></span>Complete Conversion</button>
+          </div>
+          <section class="card">
+            <div class="wizard">
+              <div class="wizard-step"><div class="step-number">1</div><h2>Lead</h2><p class="page-subtitle">Confirm source, counselor notes, qualification, and contact details.</p><span class="badge success" style="margin-top:16px">Verified</span></div>
+              <div class="wizard-step"><div class="step-number">2</div><h2>Admission</h2><p class="page-subtitle">Select branch, intake, admission owner, scholarship, and payment plan.</p><span class="badge pending" style="margin-top:16px">In progress</span></div>
+              <div class="wizard-step"><div class="step-number">3</div><h2>Enrollment</h2><p class="page-subtitle">Choose course, batch, trainer, schedule, and enrollment confirmation.</p><span class="badge cold" style="margin-top:16px">Upcoming</span></div>
+              <div class="wizard-step"><div class="step-number">4</div><h2>Student</h2><p class="page-subtitle">Create student profile, ID, fee ledger, documents, and attendance shell.</p><span class="badge cold" style="margin-top:16px">Upcoming</span></div>
+            </div>
+          </section>
+          <div class="grid two-grid">
+            <section class="card card-pad">
+              <h2>Admission Details</h2>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Admission Branch</label><select><option>Kathmandu</option><option>Pokhara</option></select></div>
+                <div class="field"><label>Intake</label><select><option>August 2026</option><option>September 2026</option></select></div>
+                <div class="field"><label>Scholarship</label><input value="10% early admission"></div>
+                <div class="field"><label>Payment Plan</label><select><option>Installment</option><option>Full Payment</option></select></div>
+              </div>
+            </section>
+            <section class="card card-pad">
+              <h2>Enrollment Preview</h2>
+              <div class="form-grid two" style="margin-top:18px">
+                <div class="field"><label>Course</label><input value="Data Analytics"></div>
+                <div class="field"><label>Batch</label><input value="DA-AUG-EVE-01"></div>
+                <div class="field"><label>Trainer</label><input value="Milan Basnet"></div>
+                <div class="field"><label>Start Date</label><input value="Aug 05, 2026"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="reports">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">Modern analytics</div>
+              <h1>Reports</h1>
+              <p class="page-subtitle">A reporting console for source performance, conversion, campaigns, counselors, branches, revenue, and enrollment.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn"><span class="icon" data-i="filter"></span>Filters</button>
+              <button class="btn"><span class="icon" data-i="download"></span>Export PDF</button>
+            </div>
+          </div>
+          <div class="grid report-grid">
+            <section class="card card-pad"><h2>Lead Source</h2><p class="card-meta">Facebook and referral remain strongest.</p><div class="mini-chart"><span style="--h:84%"></span><span style="--h:58%"></span><span style="--h:42%"></span><span style="--h:35%"></span><span style="--h:24%"></span></div></section>
+            <section class="card card-pad"><h2>Conversion</h2><p class="card-meta">Inquiry to enrollment by funnel step.</p><div class="mini-chart"><span style="--h:94%"></span><span style="--h:72%"></span><span style="--h:51%"></span><span style="--h:31%"></span><span style="--h:18%"></span></div></section>
+            <section class="card card-pad"><h2>Campaign</h2><p class="card-meta">Dashain Intake leads quality score.</p><div class="mini-chart"><span style="--h:66%"></span><span style="--h:74%"></span><span style="--h:46%"></span><span style="--h:81%"></span><span style="--h:53%"></span></div></section>
+            <section class="card card-pad"><h2>Counselor</h2><p class="card-meta">Performance by admissions closed.</p><div class="mini-chart"><span style="--h:88%"></span><span style="--h:71%"></span><span style="--h:61%"></span><span style="--h:44%"></span><span style="--h:39%"></span></div></section>
+            <section class="card card-pad"><h2>Branch</h2><p class="card-meta">Multi-branch revenue and volume.</p><div class="mini-chart"><span style="--h:80%"></span><span style="--h:45%"></span><span style="--h:62%"></span><span style="--h:38%"></span><span style="--h:28%"></span></div></section>
+            <section class="card card-pad"><h2>Revenue</h2><p class="card-meta">Collected, pending, and overdue fee flow.</p><div class="mini-chart"><span style="--h:73%"></span><span style="--h:56%"></span><span style="--h:67%"></span><span style="--h:49%"></span><span style="--h:76%"></span></div></section>
+            <section class="card card-pad"><h2>Enrollment</h2><p class="card-meta">Batch fill rate and student starts.</p><div class="mini-chart"><span style="--h:58%"></span><span style="--h:64%"></span><span style="--h:79%"></span><span style="--h:51%"></span><span style="--h:69%"></span></div></section>
+          </div>
+        </section>
+
+        <section class="page" id="settings">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">System controls</div>
+              <h1>Settings</h1>
+              <p class="page-subtitle">Configure CRM vocabulary, branches, users, roles, and permissions.</p>
+            </div>
+            <button class="btn primary"><span class="icon" data-i="plus"></span>Add Setting</button>
+          </div>
+          <div class="settings-grid">
+            <aside class="card settings-menu">
+              <button class="active">Lead Sources</button>
+              <button>Campaigns</button>
+              <button>Statuses</button>
+              <button>Priorities</button>
+              <button>Tags</button>
+              <button>Branches</button>
+              <button>Users</button>
+              <button>Roles</button>
+              <button>Permissions</button>
+            </aside>
+            <section class="card">
+              <div class="card-header"><div><h2>Lead Sources</h2><p class="card-meta">Reusable sources for attribution and reports.</p></div><button class="btn"><span class="icon" data-i="plus"></span>New Source</button></div>
+              <div class="list">
+                <div class="settings-row"><div><div class="row-title">Facebook Ads</div><div class="row-meta">Default for campaign imports</div></div><span class="badge success">Active</span></div>
+                <div class="settings-row"><div><div class="row-title">Referral</div><div class="row-meta">Used for alumni and partner referrals</div></div><span class="badge success">Active</span></div>
+                <div class="settings-row"><div><div class="row-title">Education Fair</div><div class="row-meta">Seasonal source for offline events</div></div><span class="badge pending">Draft</span></div>
+                <div class="settings-row"><div><div class="row-title">TikTok Campaign</div><div class="row-meta">No leads recorded yet</div></div><span class="badge cold">Empty</span></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="students">
+          <div class="page-header"><div><div class="eyebrow">Student management</div><h1>Students</h1><p class="page-subtitle">A placeholder roster for future student profile, attendance, fee, and document workflows.</p></div></div>
+          <div class="empty-state"><div><strong>No student records in this prototype view</strong><span>Converted leads will populate this workspace in the full product.</span></div></div>
+        </section>
+
+        <section class="page" id="courses">
+          <div class="page-header"><div><div class="eyebrow">Course management</div><h1>Courses</h1><p class="page-subtitle">Course catalog, pricing, modules, and trainer assignment wireframe placeholder.</p></div></div>
+          <div class="empty-state"><div><strong>Course catalog preview is empty</strong><span>Add course cards, module outlines, and pricing tables in the next design pass.</span></div></div>
+        </section>
+
+        <section class="page" id="batches">
+          <div class="page-header"><div><div class="eyebrow">Batch management</div><h1>Batches</h1><p class="page-subtitle">Batch capacity, schedule, trainer, and enrollment pipeline placeholder.</p></div></div>
+          <div class="loading-state"><div class="skeleton"><strong>Loading batch schedule</strong><span></span><span style="width:70%"></span><span style="width:86%"></span></div></div>
+        </section>
+
+        <section class="page" id="trainers">
+          <div class="page-header"><div><div class="eyebrow">HR lite</div><h1>Trainers</h1><p class="page-subtitle">Trainer availability, course skills, and assigned batches placeholder.</p></div></div>
+          <div class="empty-state"><div><strong>No trainer cards selected</strong><span>Use this space for faculty profiles and workload planning.</span></div></div>
+        </section>
+
+        <section class="page" id="finance">
+          <div class="page-header"><div><div class="eyebrow">Finance</div><h1>Fees & Payments</h1><p class="page-subtitle">Payment collection, invoice status, pending dues, and revenue tracking placeholder.</p></div></div>
+          <div class="loading-state"><div class="skeleton"><strong>Fetching finance snapshot</strong><span></span><span style="width:75%"></span><span style="width:52%"></span></div></div>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="activityModal" role="dialog" aria-modal="true" aria-labelledby="activityTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div><h2 id="activityTitle">Log Call</h2><p class="card-meta">Capture outcome and next step.</p></div>
+        <button class="btn icon-only" data-close-modal><span class="icon" data-i="x"></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid two">
+          <div class="field"><label>Call Timestamp</label><input type="datetime-local" value="2026-07-21T10:42"></div>
+          <div class="field"><label>Direction</label><select><option>Outbound</option><option>Inbound</option></select></div>
+          <div class="field"><label>Caller</label><select><option>Aarav Sharma</option><option>Sushmita Karki</option><option>Bibek Adhikari</option></select></div>
+          <div class="field"><label>Call Outcome</label><select><option>Interested</option><option>No answer</option><option>Callback requested</option><option>Not interested</option></select></div>
+          <div class="field"><label>Duration</label><input value="08:42"></div>
+          <div class="field"><label>Recording</label><input placeholder="Optional recording link"></div>
+          <div class="field span-2"><label>Notes</label><textarea>Discussed weekend batch, fee plan, and placement support. Student wants confirmation after parent review.</textarea></div>
+          <div class="field"><label>Next Followup</label><input type="date" value="2026-07-22"></div>
+          <div class="field"><label>Next Action</label><input value="Parent call at 11:30 AM"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" data-close-modal>Cancel</button>
+        <button class="btn primary" data-close-modal><span class="icon" data-i="check"></span>Save Activity</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="followupModal" role="dialog" aria-modal="true" aria-labelledby="followupTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div><h2 id="followupTitle">Schedule Followup</h2><p class="card-meta">Create a counselor reminder.</p></div>
+        <button class="btn icon-only" data-close-modal><span class="icon" data-i="x"></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid two">
+          <div class="field"><label>Date</label><input type="date" value="2026-07-22"></div>
+          <div class="field"><label>Time</label><input type="time" value="11:30"></div>
+          <div class="field span-2"><label>Purpose</label><input value="Parent consultation and payment plan confirmation"></div>
+          <div class="field"><label>Reminder</label><select><option>30 minutes before</option><option>1 hour before</option><option>1 day before</option></select></div>
+          <div class="field"><label>Assigned To</label><select><option>Aarav Sharma</option><option>Sushmita Karki</option><option>Bibek Adhikari</option></select></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" data-close-modal>Cancel</button>
+        <button class="btn primary" data-close-modal><span class="icon" data-i="calendar"></span>Schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const iconMap = {
+      activity: '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 8-6-16-3 8H2"/></svg>',
+      alert: '<svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+      archive: '<svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>',
+      bell: '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+      book: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>',
+      bookmark: '<svg viewBox="0 0 24 24"><path d="M19 21 12 17 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+      briefcase: '<svg viewBox="0 0 24 24"><path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><path d="M3 7h18v13H3z"/><path d="M3 13h18"/></svg>',
+      building: '<svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><path d="M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>',
+      chart: '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/></svg>',
+      check: '<svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg>',
+      clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+      download: '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>',
+      edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+      filter: '<svg viewBox="0 0 24 24"><path d="M22 3H2l8 9v7l4 2v-9z"/></svg>',
+      grid: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+      id: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M7 16h4"/></svg>',
+      layers: '<svg viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>',
+      menu: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+      message: '<svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
+      moon: '<svg viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z"/></svg>',
+      more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+      phone: '<svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.7 19.7 0 0 1-8.6-3.1 19.3 19.3 0 0 1-6-6A19.7 19.7 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2.1Z"/></svg>',
+      plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+      search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+      settings: '<svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3h.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>',
+      upload: '<svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/></svg>',
+      users: '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg>',
+      wallet: '<svg viewBox="0 0 24 24"><path d="M20 7V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-1"/><path d="M18 12h4v4h-4a2 2 0 0 1 0-4Z"/></svg>',
+      x: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+    };
+
+    document.querySelectorAll("[data-i]").forEach((el) => {
+      el.innerHTML = iconMap[el.dataset.i] || "";
+    });
+
+    const pages = [...document.querySelectorAll(".page")];
+    const navItems = [...document.querySelectorAll(".nav-item")];
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("mobileOverlay");
+
+    function showPage(id) {
+      pages.forEach((page) => page.classList.toggle("active", page.id === id));
+      navItems.forEach((item) => item.classList.toggle("active", item.dataset.page === id));
+      sidebar.classList.remove("open");
+      overlay.classList.remove("active");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.addEventListener("click", (event) => {
+      const pageButton = event.target.closest("[data-page], [data-page-shortcut]");
+      if (pageButton) {
+        showPage(pageButton.dataset.page || pageButton.dataset.pageShortcut);
+      }
+
+      const modalButton = event.target.closest("[data-modal]");
+      if (modalButton) {
+        document.getElementById(modalButton.dataset.modal).classList.add("active");
+      }
+
+      if (event.target.closest("[data-close-modal]") || event.target.classList.contains("modal-backdrop")) {
+        document.querySelectorAll(".modal-backdrop").forEach((modal) => modal.classList.remove("active"));
+      }
+    });
+
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+    });
+
+    document.getElementById("notificationToggle").addEventListener("click", () => {
+      document.getElementById("notificationPanel").classList.toggle("active");
+    });
+
+    document.getElementById("mobileMenu").addEventListener("click", () => {
+      sidebar.classList.add("open");
+      overlay.classList.add("active");
+    });
+
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("active");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        document.querySelectorAll(".modal-backdrop").forEach((modal) => modal.classList.remove("active"));
+        document.getElementById("notificationPanel").classList.remove("active");
+        sidebar.classList.remove("open");
+        overlay.classList.remove("active");
+      }
+    });
+  </script>
+</body>
+</html>

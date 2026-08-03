@@ -9,7 +9,10 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: number | null;
+  /** Group (role) IDs — M2M. Present in login/register responses, not the list serializer. */
+  groups?: number[];
+  /** Effective permission codenames, e.g. "account.add_user". Login/register only. */
+  user_permissions?: string[];
   daily_call_target_min: number | null;
   monthly_enrollment_target: string | null;
   designation: string | null;
@@ -30,6 +33,10 @@ export interface User {
   is_staff: boolean;
   is_superuser: boolean;
   last_login: string | null;
+  /** Assigned branch FK id (nullable). Pending backend support — see docs/user-branch-counselor-handoff.md. */
+  branch: number | null;
+  /** Denormalized branch label (read-only). */
+  branch_name?: string | null;
 }
 
 export interface RegisterPayload {
@@ -52,6 +59,7 @@ export interface RegisterPayload {
   work_sat?: boolean;
   exclude_from_calls?: boolean;
   exclude_from_enrollment?: boolean;
+  branch?: number | null;
 }
 
 export type UpdateUserPayload = Partial<
@@ -62,6 +70,15 @@ export interface Group {
   id: number;
   name: string;
   permissions: number[];
+}
+
+export interface ApiNotification {
+  id: number;
+  title: string;
+  message: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
 }
 
 export interface Permission {
@@ -81,4 +98,54 @@ export interface ChangePasswordPayload {
   old_password: string;
   new_password: string;
   confirm_new_password: string;
+}
+
+export interface ResetPasswordPayload {
+  uid: string;
+  token: string;
+  new_password: string;
+  confirm_new_password: string;
+}
+
+export interface UserListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  name?: string;
+  email?: string;
+  designation?: string;
+  phone?: string;
+  is_active?: boolean;
+  is_staff?: boolean;
+  group?: number;
+  /**
+   * Filter users by their assigned branch. Pending backend support
+   * (see docs/user-branch-counselor-handoff.md) — ignored server-side until
+   * `/api/users/?branch_id=` ships, at which point this narrows the list.
+   */
+  branch_id?: number;
+  ordering?: string;
+}
+
+export type CourseType = "course" | "master_class" | "job_ready_program";
+
+export interface Course {
+  id: number;
+  course_type: CourseType;
+  name: string;
+  full_amount: string;
+  one_time_payment_discount: string | null;
+  syllabus: string | null;
+  remarks: string | null;
+}
+
+export type CoursePayload = Partial<Omit<Course, "id">>;
+
+export interface CourseListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  name?: string;
+  course_type?: CourseType;
+  ordering?: string;
 }

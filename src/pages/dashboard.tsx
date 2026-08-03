@@ -1,91 +1,218 @@
-import { PhoneCall, Target, Timer, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CalendarClock, Layers, Sparkles, TrendingUp, TriangleAlert, Wallet } from "lucide-react";
+import { Link } from "react-router-dom";
+import { DonutChart, FunnelChart } from "@/components/charts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth";
-import { useUsers } from "@/hooks/use-users";
+import { useDataSource } from "@/context/data-source";
+import { LiveDashboard } from "@/pages/dashboard-live";
+import {
+  counselorLeaderboard,
+  KPIS,
+  leadFunnel,
+  recentActivities,
+  sourceBreakdown,
+  upcomingFollowUps,
+} from "@/data/lead-analytics";
+import { formatNPR, formatDateTime, relativeToToday } from "@/lib/leads-format";
+import { cn } from "@/lib/utils";
+import { PriorityBadge } from "@/pages/leads/components/lead-badges";
+
+const ACTIVITY_BADGE: Record<string, { label: string; cls: string }> = {
+  call: { label: "Call", cls: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  status_change: { label: "Status", cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  assignment_change: { label: "Assign", cls: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  follow_up: { label: "Follow-up", cls: "bg-brand-fixed-dim/25 text-brand-container" },
+  enrollment: { label: "Enrolled", cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  payment: { label: "Payment", cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+};
+
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  delta,
+  deltaTone = "up",
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+  delta: string;
+  deltaTone?: "up" | "warn";
+  tone: string;
+}) {
+  return (
+    <Card className="gap-2 py-5">
+      <CardHeader className="flex-row items-center justify-between">
+        <CardDescription className="font-mono text-[11px] font-medium tracking-wider uppercase">
+          {label}
+        </CardDescription>
+        <Icon className={cn("size-4", tone)} />
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="font-headline text-2xl font-semibold">{value}</p>
+        <span
+          className={cn(
+            "inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold",
+            deltaTone === "up"
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          )}
+        >
+          {delta}
+        </span>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data, isLoading } = useUsers(1, 100);
+  const { source } = useDataSource();
+  const firstName = user?.name?.split(" ")[0] ?? "there";
 
-  const users = data?.results ?? [];
-  const activeCount = users.filter((u) => u.is_active).length;
-  const callers = users.filter((u) => !u.exclude_from_calls);
-  const totalDailyTarget = callers.reduce((sum, u) => sum + (u.daily_call_target_min ?? 0), 0);
-  const totalEnrollTarget = users.reduce(
-    (sum, u) => sum + (Number(u.monthly_enrollment_target) || 0),
-    0,
-  );
+  if (source === "api") return <LiveDashboard firstName={firstName} />;
 
-  const stats = [
-    {
-      label: "Team members",
-      value: data?.count ?? 0,
-      sub: `${activeCount} active`,
-      icon: Users,
-    },
-    {
-      label: "Call agents",
-      value: callers.length,
-      sub: "included in call rotation",
-      icon: PhoneCall,
-    },
-    {
-      label: "Daily call target",
-      value: `${totalDailyTarget} min`,
-      sub: "combined team talk-time goal",
-      icon: Timer,
-    },
-    {
-      label: "Monthly enrollment target",
-      value: `NPR ${totalEnrollTarget.toLocaleString()}`,
-      sub: "combined team goal",
-      icon: Target,
-    },
-  ];
+  return <MockDashboard />;
+}
+
+function MockDashboard() {
+  const { user } = useAuth();
+  const funnel = leadFunnel();
+  const sources = sourceBreakdown();
+  const leaders = counselorLeaderboard();
+  const upcoming = upcomingFollowUps();
+  const activities = recentActivities();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Welcome back, {user?.name?.split(" ")[0]} 👋</h1>
-        <p className="text-muted-foreground text-sm">
-          Success Central — SkillShikshya counseling &amp; sales operations.
+        <p className="text-brand font-mono text-[11px] font-bold tracking-wider uppercase">
+          CRM command center
+        </p>
+        <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">
+          Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Track demand, counselor execution, and admissions movement across the institute.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="gap-2 py-5">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardDescription>{s.label}</CardDescription>
-              <s.icon className="text-brand size-4" />
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <p className="text-2xl font-semibold">{s.value}</p>
-              )}
-              <p className="text-muted-foreground mt-1 text-xs">{s.sub}</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* KPI row */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <Kpi label="New leads" value={KPIS.newLeads} icon={Sparkles} delta="+12.8% vs last week" tone="text-sky-600 dark:text-sky-400" />
+        <Kpi label="Follow-ups today" value={KPIS.dueToday} icon={CalendarClock} delta="action needed" deltaTone="warn" tone="text-brand" />
+        <Kpi label="Overdue" value={KPIS.overdue} icon={TriangleAlert} delta="needs attention" deltaTone="warn" tone="text-destructive" />
+        <Kpi label="Admissions" value={KPIS.admissions} icon={Layers} delta="+7 this month" tone="text-violet-600 dark:text-violet-400" />
+        <Kpi label="Enrolled revenue" value={formatNPR(KPIS.revenue)} icon={Wallet} delta="82% collected" tone="text-emerald-600 dark:text-emerald-400" />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming next</CardTitle>
-          <CardDescription>
-            These modules light up as their backend APIs ship.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Badge variant="secondary">Leads</Badge>
-          <Badge variant="secondary">Calls</Badge>
-          <Badge variant="secondary">Call Minutes</Badge>
-        </CardContent>
-      </Card>
+      {/* Funnel + sources */}
+      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Lead funnel</CardTitle>
+            <CardDescription>Inquiry to enrollment by current stage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FunnelChart stages={funnel} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Lead sources</CardTitle>
+            <CardDescription>Top acquisition channels</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DonutChart slices={sources} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Activities + upcoming + leaderboard */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent activities</CardTitle>
+            <CardDescription>Latest CRM touchpoints</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {activities.map((a) => {
+              const badge = ACTIVITY_BADGE[a.type] ?? { label: "Event", cls: "bg-muted text-muted-foreground" };
+              return (
+                <Link
+                  key={a.id}
+                  to={`/leads/${a.leadId}`}
+                  className="bg-surface-container-low hover:bg-accent flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{a.title}</p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {a.leadName} · {relativeToToday(a.at)}
+                    </p>
+                  </div>
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", badge.cls)}>
+                    {badge.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Upcoming follow-ups</CardTitle>
+            <CardDescription>Next counselor actions</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {upcoming.map((u) => (
+              <Link
+                key={u.id}
+                to={`/leads/${u.id}`}
+                className="bg-surface-container-low hover:bg-accent flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{u.name}</p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {formatDateTime(u.dueAt)} — {u.purpose}
+                  </p>
+                </div>
+                <PriorityBadge priority={u.priority as never} showLabel={false} />
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Counselor leaderboard</CardTitle>
+            <CardDescription>Conversions this cycle</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {leaders.map((l, i) => (
+              <div
+                key={l.id}
+                className="bg-surface-container-low flex items-center justify-between gap-3 rounded-lg border p-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground font-mono text-xs font-bold">#{i + 1}</span>
+                  <div>
+                    <p className="text-sm font-semibold">{l.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {l.admissions} admissions · {l.followUps} follow-ups
+                    </p>
+                  </div>
+                </div>
+                <span className="text-brand flex items-center gap-1 text-sm font-bold">
+                  <TrendingUp className="size-3.5" />
+                  {l.conversionPct}%
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { api } from "@/lib/api";
-import type { Paginated, UpdateUserPayload, User } from "@/types";
+import type { Paginated, UpdateUserPayload, User, UserListParams } from "@/types";
 
 export const usersService = {
-  async list(params: { page?: number; page_size?: number } = {}) {
+  async list(params: UserListParams = {}) {
     const { data } = await api.get<Paginated<User>>("/users/", { params });
     return data;
   },
@@ -19,5 +19,19 @@ export const usersService = {
 
   async remove(id: number) {
     await api.delete(`/users/${id}/`);
+  },
+
+  /** Downloads the filtered user list as users.csv (same query params as list). */
+  async exportCsv(params: Omit<UserListParams, "page" | "page_size"> = {}) {
+    const { data } = await api.get<Blob>("/users/export_csv/", {
+      params,
+      responseType: "blob",
+    });
+    const url = URL.createObjectURL(data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "users.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   },
 };

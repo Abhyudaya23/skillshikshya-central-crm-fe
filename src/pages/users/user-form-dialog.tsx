@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useBranches } from "@/hooks/use-branches";
 import { useGroups } from "@/hooks/use-groups";
 import { useRegisterUser, useUpdateUser } from "@/hooks/use-users";
 import { useAuth } from "@/context/auth";
+import { useDataSource } from "@/context/data-source";
 import type { RegisterPayload, User } from "@/types";
 
 const WEEKDAYS = [
@@ -42,7 +45,8 @@ interface FormState {
   password: string;
   phone: string;
   designation: string;
-  role: string; // group id as string, "" = none
+  group: string; // single group id as string, "" = none (sent as groups: [])
+  branch: string; // single branch id as string, "" = unassigned
   daily_call_target_min: string;
   monthly_enrollment_target: string;
   shift_start: string;
@@ -66,7 +70,8 @@ const emptyForm: FormState = {
   password: "",
   phone: "",
   designation: "",
-  role: "",
+  group: "",
+  branch: "",
   daily_call_target_min: "",
   monthly_enrollment_target: "",
   shift_start: "09:00",
@@ -91,7 +96,8 @@ function toForm(user: User): FormState {
     password: "",
     phone: user.phone ?? "",
     designation: user.designation ?? "",
-    role: user.role != null ? String(user.role) : "",
+    group: user.groups?.[0] != null ? String(user.groups[0]) : "",
+    branch: user.branch != null ? String(user.branch) : "",
     daily_call_target_min:
       user.daily_call_target_min != null ? String(user.daily_call_target_min) : "",
     monthly_enrollment_target: user.monthly_enrollment_target ?? "",
@@ -122,18 +128,37 @@ export function UserFormDialog({
 }) {
   const isEdit = user != null;
   const { user: currentUser } = useAuth();
+  const { source } = useDataSource();
+  const isStaff = !!currentUser?.is_staff;
   const [form, setForm] = useState<FormState>(emptyForm);
-  const groups = useGroups(open && !!currentUser?.is_staff);
+  const [branchSearch, setBranchSearch] = useState("");
+  const [branchLabel, setBranchLabel] = useState("");
+  const groups = useGroups(open && isStaff);
+  const branchesQ = useBranches(1, 100, branchSearch, open && isStaff && source === "api");
   const register = useRegisterUser();
   const update = useUpdateUser();
   const busy = register.isPending || update.isPending;
 
+  const branchOptions = useMemo(
+    () => (branchesQ.data?.results ?? []).map((b) => ({ value: String(b.id), label: b.name })),
+    [branchesQ.data],
+  );
+
   useEffect(() => {
-    if (open) setForm(user ? toForm(user) : emptyForm);
+    if (open) {
+      setForm(user ? toForm(user) : emptyForm);
+      setBranchLabel(user?.branch_name ?? "");
+      setBranchSearch("");
+    }
   }, [open, user]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const onPickBranch = (v: string) => {
+    set("branch", v);
+    setBranchLabel(branchOptions.find((o) => o.value === v)?.label ?? branchLabel);
+  };
 
   function buildCommon() {
     return {
@@ -161,14 +186,23 @@ export function UserFormDialog({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (isEdit) {
+      // Only staff manage groups/active status. For a non-staff self-edit the role
+      // select is hidden, so sending groups here would wipe existing membership.
+      const staffOnly = currentUser?.is_staff
+        ? {
+            // groups is M2M; a single-select maps to one-element (or empty) array.
+            groups: form.group ? [Number(form.group)] : [],
+            is_active: form.is_active,
+            branch: form.branch ? Number(form.branch) : null,
+          }
+        : {};
       update.mutate(
         {
           id: user.id,
           payload: {
             name: form.name,
             email: form.email,
-            role: form.role ? Number(form.role) : null,
-            is_active: form.is_active,
+            ...staffOnly,
             ...buildCommon(),
           },
         },
@@ -183,10 +217,11 @@ export function UserFormDialog({
       };
       register.mutate(payload, {
         onSuccess: (data) => {
-          // role can't be set at registration — patch it right after if chosen
-          if (form.role) {
-            update.mutate({ id: data.user.id, payload: { role: Number(form.role) } });
-          }
+          // groups and branch can't be set at registration — patch right after if chosen
+          const post: Record<string, unknown> = {};
+          if (form.group) post.groups = [Number(form.group)];
+          if (form.branch) post.branch = Number(form.branch);
+          if (Object.keys(post).length) update.mutate({ id: data.user.id, payload: post });
           onOpenChange(false);
         },
       });
@@ -259,8 +294,8 @@ export function UserFormDialog({
               <div className="space-y-2">
                 <Label>Role</Label>
                 <Select
-                  value={form.role || "none"}
-                  onValueChange={(v) => set("role", v === "none" ? "" : v)}
+                  value={form.group || "none"}
+                  onValueChange={(v) => set("group", v === "none" ? "" : v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="No role" />
@@ -274,6 +309,22 @@ export function UserFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {isStaff && source === "api" && (
+              <div className="space-y-2">
+                <Label>Branch</Label>
+                <Combobox
+                  value={form.branch}
+                  onChange={onPickBranch}
+                  options={branchOptions}
+                  placeholder="Unassigned"
+                  searchPlaceholder="Search branches…"
+                  emptyText="No branches found."
+                  onSearchChange={setBranchSearch}
+                  loading={branchesQ.isFetching}
+                  selectedLabel={branchLabel}
+                />
               </div>
             )}
             <div className="space-y-2">
@@ -356,7 +407,7 @@ export function UserFormDialog({
                 onCheckedChange={(v) => set("exclude_from_enrollment", v)}
               />
             </label>
-            {isEdit && (
+            {isEdit && currentUser?.is_staff && (
               <label className="flex items-center justify-between gap-2 rounded-md border p-3 text-sm">
                 Active
                 <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
