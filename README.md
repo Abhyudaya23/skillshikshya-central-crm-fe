@@ -1,6 +1,6 @@
-# Success Central CRM — Frontend
+# SkillShikshya Central CRM — Frontend
 
-React frontend for SkillShikshya's Success Central CRM (counseling & sales operations).
+React frontend for SkillShikshya Central CRM (counseling & sales operations).
 
 ## Stack
 
