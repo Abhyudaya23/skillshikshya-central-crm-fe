@@ -315,10 +315,16 @@ export default function LeadDetailPage() {
               <h1 className="font-headline text-2xl font-semibold tracking-tight">{lead.fullName}</h1>
               <p className="text-muted-foreground text-sm">
                 {formatPhone(lead.primaryPhone)}
-                {primary && <> · {primary.courseName}</>} · Assigned to{" "}
-                <span className="text-foreground font-medium">
-                  {lead.assignedToName ?? counselorName(lead.assignedTo)}
-                </span>
+                {primary && <> · {primary.courseName}</>}
+                {lead.assignedTo && (
+                  <>
+                    {" "}
+                    · Assigned to{" "}
+                    <span className="text-foreground font-medium">
+                      {lead.assignedToName ?? counselorName(lead.assignedTo)}
+                    </span>
+                  </>
+                )}
               </p>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <StatusBadge status={lead.status} name={lead.statusName} color={lead.statusColor} />
