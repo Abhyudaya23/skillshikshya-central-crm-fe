@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MailCheck } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { useAuth } from "@/context/auth";
 import { apiErrorMessage } from "@/lib/api";
 import { authService } from "@/services/auth.service";
 
-type Mode = "login" | "forgot-email";
+type Mode = "login" | "forgot-email" | "forgot-sent";
 
 export default function LoginPage() {
   const { status, login } = useAuth();
@@ -49,15 +50,8 @@ export default function LoginPage() {
   const handleForgotEmail = (e: React.FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      const res = await authService.forgotPassword(email);
-      toast.success(res.detail);
-      // In DEBUG the backend echoes the reset link so we can jump straight to it.
-      if (res.reset_link) {
-        const query = res.reset_link.split("?")[1] ?? "";
-        navigate(`/reset-password?${query}`);
-        return;
-      }
-      setMode("login");
+      await authService.forgotPassword(email);
+      setMode("forgot-sent");
     });
   };
 
@@ -72,6 +66,7 @@ export default function LoginPage() {
           <CardDescription>
             {mode === "login" && "Sign in to your SkillShikshya account"}
             {mode === "forgot-email" && "Enter your email to receive a reset link"}
+            {mode === "forgot-sent" && "Check your inbox"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,6 +135,26 @@ export default function LoginPage() {
                 Back to sign in
               </Button>
             </form>
+          )}
+
+          {mode === "forgot-sent" && (
+            <div className="space-y-4 text-center">
+              <div className="bg-brand-container/10 text-brand mx-auto flex size-12 items-center justify-center rounded-full">
+                <MailCheck className="size-6" />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                If an account exists for <span className="text-foreground font-medium">{email}</span>,
+                we've sent a password reset link. It expires in 15 minutes.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setMode("login")}
+              >
+                Back to sign in
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
