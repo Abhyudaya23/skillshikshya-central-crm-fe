@@ -238,7 +238,7 @@ export const COUNSELORS = [
 export const COUNSELOR_BY_ID = new Map(COUNSELORS.map((c) => [c.id, c]));
 
 export function counselorName(id: string | null | undefined): string {
-  if (!id) return "Unassigned";
+  if (!id) return "Not yet assigned";
   return COUNSELOR_BY_ID.get(id)?.name ?? id;
 }
 

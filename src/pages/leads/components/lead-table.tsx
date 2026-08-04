@@ -136,7 +136,7 @@ export function LeadTable({ leads, selected, onToggle, onToggleAll, onAction, ca
                     <span className="text-sm">{lead.assignedToName ?? counselorName(lead.assignedTo)}</span>
                   ) : (
                     <Badge variant="warning" className="text-[10px]">
-                      Unassigned
+                      Not yet assigned
                     </Badge>
                   )}
                 </TableCell>
