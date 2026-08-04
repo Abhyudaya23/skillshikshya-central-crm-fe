@@ -24,8 +24,8 @@ export function toNepalIso(local: string): string {
   return formatDateToNepalIso(d);
 }
 
-/** "Today" for the static prototype — matches the workbook review window. */
-export const TODAY = new Date("2026-07-21T10:00:00+05:45");
+/** "Today" for the running app. The mock dataset will shift relative to the real date. */
+export const TODAY = new Date();
 
 export function formatNPR(amount: number | null | undefined): string {
   if (amount == null) return "—";
@@ -106,7 +106,8 @@ export function formatDuration(seconds: number | undefined): string {
   return `${m} min ${s.toString().padStart(2, "0")} sec`;
 }
 
-export function initialsOf(name: string): string {
+export function initialsOf(name: string | null | undefined): string {
+  if (!name) return "?";
   return (
     name
       .split(/\s+/)
@@ -119,7 +120,8 @@ export function initialsOf(name: string): string {
 }
 
 /** Mask a phone lightly for compact display while keeping it recognizable. */
-export function formatPhone(phone: string): string {
+export function formatPhone(phone: string | null | undefined): string {
+  if (phone == null) return "—";
   const digits = phone.replace(/[^0-9]/g, "");
   if (digits.startsWith("977") && digits.length === 13) {
     return `+977 ${digits.slice(3, 7)}-${digits.slice(7)}`;

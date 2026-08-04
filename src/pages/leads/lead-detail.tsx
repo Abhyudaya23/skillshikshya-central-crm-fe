@@ -150,12 +150,14 @@ function copy(text: string, label: string) {
 }
 
 /** `tel:` link for the device dialer — keep digits and a leading +. */
-function telHref(phone: string): string {
+function telHref(phone: string | null | undefined): string {
+  if (!phone) return "#";
   return `tel:${phone.replace(/[^0-9+]/g, "")}`;
 }
 
 /** wa.me link — bare 10-digit Nepal mobiles get the 977 country code. */
-function whatsappHref(phone: string): string {
+function whatsappHref(phone: string | null | undefined): string {
+  if (!phone) return "#";
   let d = phone.replace(/[^0-9]/g, "");
   if (!d.startsWith("977") && d.length === 10) d = `977${d}`;
   return `https://wa.me/${d}`;
@@ -272,7 +274,10 @@ export default function LeadDetailPage() {
       <div className="flex min-h-[50dvh] flex-col items-center justify-center gap-3 text-center">
         <h1 className="font-headline text-xl font-semibold">Lead not found</h1>
         <p className="text-muted-foreground text-sm">
-          The lead <span className="font-mono">{id}</span> doesn’t exist in the mock dataset.
+          The lead <span className="font-mono">{id}</span> could not be found.{" "}
+          {source === "api"
+            ? "It may have been deleted or the link is broken."
+            : "It doesn’t exist in the mock dataset."}
         </p>
         <Button variant="outline" asChild>
           <Link to="/leads">

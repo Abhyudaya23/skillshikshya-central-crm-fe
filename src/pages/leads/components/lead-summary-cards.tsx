@@ -4,11 +4,18 @@ import { cn } from "@/lib/utils";
 import type { LeadListItem } from "@/types/leads";
 import { isDueToday, isOverdue, TODAY } from "@/lib/leads-format";
 
-function countThisMonth(leads: LeadListItem[]): number {
+function countEnrolledInMonth(leads: LeadListItem[], year: number, month: number): number {
   return leads.filter((l) => {
     if (l.status !== "enrolled") return false;
     const d = new Date(l.createdAt);
-    return d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth();
+    return d.getFullYear() === year && d.getMonth() === month;
+  }).length;
+}
+
+function leadsCreatedInWindow(leads: LeadListItem[], startMs: number, endMs: number): number {
+  return leads.filter((l) => {
+    const t = new Date(l.createdAt).getTime();
+    return t >= startMs && t < endMs;
   }).length;
 }
 
@@ -18,9 +25,38 @@ export function LeadSummaryCards({ leads }: { leads: LeadListItem[] }) {
   const overdue = leads.filter(
     (l) => l.nextFollowUpAt && isOverdue(l.nextFollowUpAt) && l.status !== "enrolled",
   ).length;
-  const enrolled = countThisMonth(leads);
+  const enrolled = countEnrolledInMonth(leads, TODAY.getFullYear(), TODAY.getMonth());
 
   const hotDue = leads.filter((l) => isDueToday(l.nextFollowUpAt) && l.priority === "hot").length;
+
+  // "New leads" delta: week-over-week change.
+  const now = TODAY.getTime();
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const thisWeekNew = leadsCreatedInWindow(leads, now - week, now);
+  const prevWeekNew = leadsCreatedInWindow(leads, now - 2 * week, now - week);
+  const newLeadsDelta =
+    prevWeekNew === 0
+      ? thisWeekNew > 0
+        ? "new this week"
+        : "no change"
+      : `${thisWeekNew >= prevWeekNew ? "+" : ""}${Math.round(
+          ((thisWeekNew - prevWeekNew) / prevWeekNew) * 100,
+        )}% vs last week`;
+
+  // "Enrolled this month" delta: change vs last month.
+  const lastMonthEnrolled = countEnrolledInMonth(
+    leads,
+    TODAY.getMonth() === 0 ? TODAY.getFullYear() - 1 : TODAY.getFullYear(),
+    TODAY.getMonth() === 0 ? 11 : TODAY.getMonth() - 1,
+  );
+  const enrolledDelta =
+    lastMonthEnrolled === 0
+      ? enrolled > 0
+        ? "new this month"
+        : "no change"
+      : `${enrolled >= lastMonthEnrolled ? "+" : ""}${Math.round(
+          ((enrolled - lastMonthEnrolled) / lastMonthEnrolled) * 100,
+        )}% vs last month`;
 
   const cards = [
     {
@@ -28,7 +64,7 @@ export function LeadSummaryCards({ leads }: { leads: LeadListItem[] }) {
       value: newLeads,
       icon: Sparkles,
       tone: "text-sky-600 dark:text-sky-400",
-      delta: "+12.8% vs last week",
+      delta: newLeadsDelta,
       deltaTone: "up" as const,
     },
     {
@@ -52,7 +88,7 @@ export function LeadSummaryCards({ leads }: { leads: LeadListItem[] }) {
       value: enrolled,
       icon: GraduationCap,
       tone: "text-emerald-600 dark:text-emerald-400",
-      delta: "+7 this month",
+      delta: enrolledDelta,
       deltaTone: "up" as const,
     },
   ];
