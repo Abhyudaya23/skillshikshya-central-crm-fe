@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCourses } from "@/hooks/use-courses";
+import { useCourseBatches } from "@/hooks/use-batches";
 import { useAddEnrollment, useAddPayment } from "@/hooks/use-leads";
 import type {
   ApiEnrollmentPayload,
@@ -56,16 +57,22 @@ export function EnrollmentDialog({
   leadId?: number;
   primaryCourseId?: number | null;
 }) {
+  const [f, setF] = useState<ApiEnrollmentPayload>({});
+
   const coursesQ = useCourses(1, 100, "");
   const courses = useMemo(() => coursesQ.data?.results ?? [], [coursesQ.data]);
+  const batchesQ = useCourseBatches(
+    { course: f.course, page_size: 100, is_active: true },
+    !!f.course,
+  );
+  const batches = useMemo(() => batchesQ.data?.results ?? [], [batchesQ.data]);
   const addEnrollment = useAddEnrollment(leadId);
 
-  const [f, setF] = useState<ApiEnrollmentPayload>({});
   useEffect(() => {
     if (!open) return;
     setF({
       course: primaryCourseId ?? undefined,
-      batch: "",
+      batch: undefined,
       enrollment_date: new Date().toISOString().slice(0, 10),
       status: "active",
       listed_fee: "0",
@@ -96,10 +103,16 @@ export function EnrollmentDialog({
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
           <div className="grid gap-2 sm:col-span-2">
-            <Label>Course *</Label>
+            <Label required>Course</Label>
             <Select
               value={f.course != null ? String(f.course) : undefined}
-              onValueChange={(v) => set("course", Number(v))}
+              onValueChange={(v) =>
+                setF((p) => ({
+                  ...p,
+                  course: Number(v),
+                  batch: undefined,
+                }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select course" />
@@ -113,9 +126,29 @@ export function EnrollmentDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2">
-            <Label>Batch</Label>
-            <Input value={f.batch ?? ""} onChange={(e) => set("batch", e.target.value)} placeholder="PY-2026-01" />
+          <div className="grid gap-2 sm:col-span-2">
+            <Label>Course Batch</Label>
+            <Select
+              value={f.batch != null ? String(f.batch) : undefined}
+              onValueChange={(v) => {
+                setF((p) => ({
+                  ...p,
+                  batch: Number(v),
+                }));
+              }}
+              disabled={!f.course || batchesQ.isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={f.course ? "Select course batch" : "Select a course first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {batches.map((b) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.coursebatch_id} — {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label>Enrollment date</Label>
@@ -217,7 +250,7 @@ export function PaymentDialog({
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label>Amount *</Label>
+            <Label required>Amount</Label>
             <Input type="number" value={f.amount ?? ""} onChange={(e) => set("amount", e.target.value)} />
           </div>
           <div className="grid gap-2">

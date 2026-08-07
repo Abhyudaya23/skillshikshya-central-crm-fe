@@ -51,6 +51,10 @@ export function buildApiParams(
     p.assigned_counselor = Number(f.assignedTo);
   }
   if (f.overdueOnly) p.next_followup_at__lte = new Date().toISOString();
+  // Date-only created range — the backend's `from_date`/`to_date` are inclusive
+  // whole days, so no timezone juggling is needed here.
+  if (f.dateFrom) p.from_date = f.dateFrom;
+  if (f.dateTo) p.to_date = f.dateTo;
   return p;
 }
 
@@ -68,6 +72,10 @@ export function mockMatch(l: LeadListItem, f: LeadFilterState): boolean {
   if (f.overdueOnly && !(l.nextFollowUpAt && isOverdue(l.nextFollowUpAt) && l.status !== "enrolled"))
     return false;
   if (f.course !== "all" && l.primaryCourseId !== f.course) return false;
+  // createdAt is an ISO timestamp; compare on the date part so the range is inclusive.
+  const createdDay = l.createdAt.slice(0, 10);
+  if (f.dateFrom && createdDay < f.dateFrom) return false;
+  if (f.dateTo && createdDay > f.dateTo) return false;
   if (f.search.trim()) {
     const q = f.search.trim().toLowerCase();
     const hay = `${l.fullName} ${l.primaryPhone} ${l.email ?? ""} ${l.referenceNumber}`.toLowerCase();

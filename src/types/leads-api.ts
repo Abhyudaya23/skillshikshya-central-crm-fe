@@ -268,7 +268,8 @@ export interface ApiEnrollment {
   course_name?: string;
   student: number | null;
   student_name?: string | null;
-  batch: string | null;
+  batch: number | null;
+  batch_name?: string | null;
   enrollment_date: string | null;
   status: ApiEnrollmentStatus;
   listed_fee: string;
@@ -287,7 +288,7 @@ export interface ApiEnrollment {
 export interface ApiEnrollmentPayload {
   course?: number;
   student?: number | null;
-  batch?: string | null;
+  batch?: number | null;
   enrollment_date?: string | null;
   status?: ApiEnrollmentStatus;
   listed_fee?: string;

@@ -242,7 +242,7 @@ export function UserFormDialog({
         <form onSubmit={submit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="uf-name">Name *</Label>
+              <Label htmlFor="uf-name" required>Name</Label>
               <Input
                 id="uf-name"
                 required
@@ -251,7 +251,7 @@ export function UserFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="uf-email">Email *</Label>
+              <Label htmlFor="uf-email" required>Email</Label>
               <Input
                 id="uf-email"
                 type="email"
@@ -262,7 +262,7 @@ export function UserFormDialog({
             </div>
             {!isEdit && (
               <div className="space-y-2">
-                <Label htmlFor="uf-password">Password *</Label>
+                <Label htmlFor="uf-password" required>Password</Label>
                 <Input
                   id="uf-password"
                   type="password"

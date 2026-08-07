@@ -79,11 +79,11 @@ export function BranchDialog({
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label>Name *</Label>
+            <Label required>Name</Label>
             <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />
           </div>
           <div className="grid gap-2">
-            <Label>Code *</Label>
+            <Label required>Code</Label>
             <Input value={form.code ?? ""} onChange={(e) => set("code", e.target.value)} placeholder="KTM" />
           </div>
           <div className="grid gap-2 sm:col-span-2">

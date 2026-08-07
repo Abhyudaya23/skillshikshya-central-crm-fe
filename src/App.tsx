@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
 import { DataSourceProvider } from "@/context/data-source";
 import { RoleProvider } from "@/context/role";
+import BatchesPage from "@/pages/batches";
 import BranchesPage from "@/pages/branches";
 import ComingSoonPage from "@/pages/coming-soon";
 import CoursesPage from "@/pages/courses";
@@ -51,6 +52,8 @@ export default function App() {
 
           {/* Existing API-wired modules */}
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/courses/batches" element={<BatchesPage defaultTab="slots" />} />
+          <Route path="/courses/course-batches" element={<BatchesPage defaultTab="course-batches" />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/calls" element={<ComingSoonPage title="Calls" />} />

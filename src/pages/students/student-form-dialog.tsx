@@ -95,11 +95,11 @@ export function StudentFormDialog({
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label>Full Name *</Label>
+            <Label required>Full Name</Label>
             <Input value={form.full_name ?? ""} onChange={(e) => set("full_name", e.target.value)} />
           </div>
           <div className="grid gap-2">
-            <Label>Phone *</Label>
+            <Label required>Phone</Label>
             <Input value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
           </div>
           <div className="grid gap-2">

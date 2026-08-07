@@ -108,7 +108,7 @@ export function CourseFormDialog({
         <form onSubmit={submit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="course-name">Name *</Label>
+              <Label htmlFor="course-name" required>Name</Label>
               <Input
                 id="course-name"
                 required
@@ -118,7 +118,7 @@ export function CourseFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Type *</Label>
+              <Label required>Type</Label>
               <Select
                 value={form.course_type}
                 onValueChange={(v) => set("course_type", v as CourseType)}
@@ -136,7 +136,7 @@ export function CourseFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="course-amount">Full amount (NPR) *</Label>
+              <Label htmlFor="course-amount" required>Full amount (NPR)</Label>
               <Input
                 id="course-amount"
                 type="number"

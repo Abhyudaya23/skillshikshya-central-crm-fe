@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+import { ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,7 @@ import { useAuth } from "@/context/auth";
 import { useCourses, useDeleteCourse } from "@/hooks/use-courses";
 import type { Course, CourseType } from "@/types";
 import { CourseFormDialog } from "./course-form-dialog";
+import { TruncatedTooltip } from "@/components/ui/truncated-tooltip";
 
 const PAGE_SIZE = 20;
 
@@ -99,17 +101,32 @@ export default function CoursesPage() {
             across courses, master classes, and job-ready programs.
           </p>
         </div>
-        {canAdd && (
-          <Button
-            variant="brand"
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus /> Add New Course
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canAdd && (
+            <Button
+              variant="brand"
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus /> Add New Course
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">Manage Setup</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <NavLink to="/courses/batches">
+                <DropdownMenuItem>Manage Time Slots</DropdownMenuItem>
+              </NavLink>
+              <NavLink to="/courses/course-batches">
+                <DropdownMenuItem>Manage Course Batches</DropdownMenuItem>
+              </NavLink>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -170,10 +187,10 @@ export default function CoursesPage() {
             )}
             {rows.map((c) => (
               <TableRow key={c.id}>
-                <TableCell>
-                  <p className="font-semibold">{c.name}</p>
+                <TableCell className="max-w-xs">
+                  <p className="font-semibold truncate">{c.name}</p>
                   {c.remarks && (
-                    <p className="text-muted-foreground line-clamp-1 text-xs">{c.remarks}</p>
+                    <TruncatedTooltip text={c.remarks} className="text-muted-foreground text-xs" maxWidth="14rem" />
                   )}
                 </TableCell>
                 <TableCell>

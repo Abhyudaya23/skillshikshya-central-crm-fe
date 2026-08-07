@@ -30,6 +30,10 @@ export interface LeadFilterState {
   priority: string;
   overdueOnly: boolean;
   unassignedOnly: boolean;
+  /** Created on or after, `YYYY-MM-DD` ("" = unset) — maps to `?from_date=`. */
+  dateFrom: string;
+  /** Created on or before, `YYYY-MM-DD` ("" = unset) — maps to `?to_date=`. */
+  dateTo: string;
 }
 
 export const DEFAULT_FILTERS: LeadFilterState = {
@@ -42,6 +46,8 @@ export const DEFAULT_FILTERS: LeadFilterState = {
   priority: "all",
   overdueOnly: false,
   unassignedOnly: false,
+  dateFrom: "",
+  dateTo: "",
 };
 
 export interface FilterOption {
@@ -81,6 +87,14 @@ function activeChips(
   if (v.assignedTo === "unassigned") chips.push({ key: "assignedTo", label: "Unassigned", clear: { ...v, assignedTo: "all" } });
   else if (v.assignedTo !== "all") chips.push({ key: "assignedTo", label: `Counselor: ${labelIn(o.counselors, v.assignedTo)}`, clear: { ...v, assignedTo: "all" } });
   if (v.priority !== "all") chips.push({ key: "priority", label: `Priority: ${labelIn(o.priorities, v.priority)}`, clear: { ...v, priority: "all" } });
+  if (v.dateFrom || v.dateTo) {
+    const label = v.dateFrom && v.dateTo
+      ? `Created ${v.dateFrom} → ${v.dateTo}`
+      : v.dateFrom
+        ? `Created from ${v.dateFrom}`
+        : `Created up to ${v.dateTo}`;
+    chips.push({ key: "created", label, clear: { ...v, dateFrom: "", dateTo: "" } });
+  }
   if (v.overdueOnly) chips.push({ key: "overdueOnly", label: "Overdue only", clear: { ...v, overdueOnly: false } });
   if (v.unassignedOnly) chips.push({ key: "unassignedOnly", label: "Unassigned only", clear: { ...v, unassignedOnly: false } });
   return chips;
@@ -243,6 +257,27 @@ export function LeadFilters({ value, onChange, options, showScopeToggles = true 
               extra={showScopeToggles ? [{ value: "unassigned", label: "Unassigned" }] : undefined}
             />
             <SheetSelect label="Priority" value={draft.priority} onChange={(v) => setDraftField("priority", v)} allLabel="All Priorities" options={options.priorities} />
+
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Created between</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  aria-label="Created from"
+                  max={draft.dateTo || undefined}
+                  value={draft.dateFrom}
+                  onChange={(e) => setDraftField("dateFrom", e.target.value)}
+                />
+                <span className="text-muted-foreground text-sm">to</span>
+                <Input
+                  type="date"
+                  aria-label="Created to"
+                  min={draft.dateFrom || undefined}
+                  value={draft.dateTo}
+                  onChange={(e) => setDraftField("dateTo", e.target.value)}
+                />
+              </div>
+            </div>
 
             <div className="grid gap-1.5">
               <label className="text-sm font-medium">Quick toggles</label>

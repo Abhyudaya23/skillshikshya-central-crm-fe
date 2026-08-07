@@ -149,7 +149,7 @@ export function adaptApiEnrollment(e: ApiEnrollment): Enrollment {
   return {
     id: `enr-${e.id}`,
     courseName: e.course_name ?? "Course",
-    batch: e.batch ?? "",
+    batch: e.batch_name ?? "",
     enrolledAt: e.enrollment_date ?? e.created_at ?? "",
     status: e.status,
     listedFee: Number(e.listed_fee),

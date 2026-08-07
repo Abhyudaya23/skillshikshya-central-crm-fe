@@ -22,6 +22,8 @@ The `branch_id` parameter works on every list endpoint.
 ```
 GET /api/leads/?branch_id=1
 GET /api/courses/?branch_id=2
+GET /api/batches/?branch_id=2
+GET /api/course-batches/?branch_id=2
 GET /api/lead-sources/?branch_id=1
 GET /api/students/?branch_id=1&status=active
 ```
@@ -145,6 +147,27 @@ Lead score uses `sort_order` — priority 1 (highest) gives the most points.
 
 ## Learning Mode & Institution Endpoints
 
+### Course Interests from External Intake
+
+The external intake endpoint accepts course interests as plain text names — not IDs:
+
+| Field | Format | Example |
+|-------|--------|---------|
+| `course_interests` | `array` of strings | `["Python Advanced", "Flutter"]` |
+| `course` | `string` (singular, alternative) | `"Python Advanced"` |
+| `courses` | `string` (comma-separated, alternative) | `"Python Advanced, Flutter"` |
+
+**How it's stored:**
+
+| Scenario | `course` (FK) | `course_name` (fallback) |
+|---|---|---|
+| Name matches an existing course in the CRM | Linked to matched course | `null` |
+| Name does NOT match any course | `null` | Stores the raw submitted name |
+
+The `course_name` field on the response always shows the correct display name regardless of how it was stored.
+
+---
+
 ### Learning Modes
 
 | Method | Endpoint | Description |
@@ -244,6 +267,76 @@ This endpoint allows unauthenticated lead creation from external websites, landi
     "phone": "9812345678"
 }
 ```
+
+---
+
+## OrbitChat Lead Sync
+
+OrbitChat AI leads are polled automatically by a daily Celery Beat task (`poll-orbitchat-leads-daily`, midnight UTC) and created as leads in the CRM.
+
+### How it works
+
+1. A `requests`-based client logs into `https://base.orbitchat.ai/api/auth/user/login` using `ORBITCHAT_EMAIL` / `ORBITCHAT_PASSWORD`.
+2. It fetches all contacts from `GET https://base.orbitchat.ai/api/contacts` with a Bearer token.
+3. Each contact is mapped to a new `Lead` via `apps.orbitchat.services.create_lead_from_orbitchat_contact`.
+
+### Field mapping
+
+| OrbitChat field | CRM Lead field |
+|-----------------|----------------|
+| `name` | `full_name` |
+| `phone` | `phone` |
+| `email` | `email` |
+| `notes` | `notes` (also used to guess a course interest) |
+| `created_at` | `custom_data.created_at` |
+| `id` | `custom_data.orbitchat_id` |
+| `channel_type` | `source` (mapped below) |
+| — | `lead_type` = first LeadType |
+
+### Channel → Source mapping
+
+| `channel_type` | CRM `source` |
+|----------------|--------------|
+| `instagram` | Instagram |
+| `facebook` | Facebook |
+| `messenger` | Messenger |
+| `whatsapp` | WhatsApp |
+| `tiktok` | TikTok |
+| `chat_widget` | Chat Widget |
+
+The source is matched by name via `get_or_create_source`; if the source doesn't exist it is created.
+
+### Deduplication
+
+A contact is **skipped** if an existing lead already has the same `custom_data.orbitchat_id` **or** the same `phone` (only when phone is provided — contacts with no phone are not deduped against each other). This prevents duplicate leads on re-poll.
+
+### Configuration (`.env`)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ORBITCHAT_API_URL` | `https://base.orbitchat.ai` | OrbitChat base URL |
+| `ORBITCHAT_EMAIL` | — | OrbitChat login email |
+| `ORBITCHAT_PASSWORD` | — | OrbitChat login password |
+
+**Note:** If the password contains `$`, quote it in `.env` (e.g. `ORBITCHAT_PASSWORD='s26@dPqB$dt2Ye'`) so docker-compose doesn't try to interpolate it.
+
+### Manual run
+
+```bash
+# Full sync (all contacts)
+docker compose exec web python -c "from apps.orbitchat.tasks import poll_orbitchat_leads_task; print(poll_orbitchat_leads_task())"
+
+# Limited sync (first N contacts only — useful for testing)
+docker compose exec web python -c "from apps.orbitchat.tasks import poll_orbitchat_leads_task; print(poll_orbitchat_leads_task(limit=5))"
+
+# Or via Celery (async, requires worker running):
+docker compose exec web python -c "from apps.orbitchat.tasks import poll_orbitchat_leads_task; print(poll_orbitchat_leads_task.delay(limit=5))"
+```
+
+**Frontend note:** the sync is entirely backend-side. OrbitChat leads simply appear in
+`/api/leads/` with `source` set to the channel and `custom_data.orbitchat_id` populated — no
+frontend integration is required, though `custom_data.orbitchat_id` is a useful marker if the
+lead list ever needs to badge chat-sourced leads.
 
 ---
 

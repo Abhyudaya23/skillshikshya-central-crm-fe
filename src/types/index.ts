@@ -148,4 +148,74 @@ export interface CourseListParams {
   name?: string;
   course_type?: CourseType;
   ordering?: string;
+  /** Branch scoping — see lead_app_overview.md §Branch Scoping. */
+  branch_id?: number;
+}
+
+/* ------------------------------------------------------------------ batches */
+
+/**
+ * A recurring time slot (Morning / Day / Evening) — `/api/batches/`.
+ * Not a cohort: a cohort is a `CourseBatch`, which points at one of these.
+ */
+export interface Batch {
+  id: number;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  branch: number | null;
+  created_by: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type BatchPayload = Partial<Pick<Batch, "name" | "description" | "is_active" | "branch">>;
+
+export interface BatchListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  name?: string;
+  is_active?: boolean;
+  ordering?: string;
+  branch_id?: number;
+}
+
+/** A specific run of a course — named cohort + time slot + dates. */
+export interface CourseBatch {
+  id: number;
+  name: string;
+  /** Auto-generated on the backend, e.g. `PY-2026-001`. Read-only. */
+  coursebatch_id: string;
+  course: number;
+  course_name?: string;
+  batch: number | null;
+  batch_name?: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  branch: number | null;
+  created_by: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type CourseBatchPayload = Partial<
+  Pick<CourseBatch, "name" | "course" | "start_date" | "end_date" | "is_active" | "branch">
+> &
+  Required<Pick<CourseBatch, "batch">>;
+
+export interface CourseBatchListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  name?: string;
+  coursebatch_id?: string;
+  course?: number;
+  batch?: number;
+  start_date?: string;
+  end_date?: string;
+  is_active?: boolean;
+  ordering?: string;
+  branch_id?: number;
 }

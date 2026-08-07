@@ -123,7 +123,7 @@ function RoleFormDialog({
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="role-name">Role name *</Label>
+            <Label htmlFor="role-name" required>Role name</Label>
             <Input
               id="role-name"
               required

@@ -14,16 +14,25 @@ import type {
   ApiPaymentPayload,
 } from "@/types/leads-api";
 
-/** Query params accepted by GET /api/leads/ (see lead_app_apis_guide.md). */
+/** Query params accepted by GET /api/leads/ (see be-mds/lead_app_lead_api_guide.md). */
 export interface LeadListParams {
   page?: number;
   page_size?: number;
   search?: string;
   lead_type?: number | string;
+  lead_type__in?: string;
   source?: number;
   source__in?: string;
   campaign?: number;
+  campaign__in?: string;
   branch?: number;
+  branch__in?: string;
+  /** Branch scoping (staff only) — see lead_app_overview.md §Branch Scoping. */
+  branch_id?: number;
+  province?: number;
+  province__in?: string;
+  city?: number;
+  city__in?: string;
   priority?: number;
   status?: number;
   status__in?: string;
@@ -34,9 +43,21 @@ export interface LeadListParams {
   include_archived?: boolean;
   tags?: number;
   lead_score__gte?: number;
+  lead_score__lte?: number;
+  expected_revenue__gte?: number;
+  expected_revenue__lte?: number;
   next_followup_at__gte?: string;
   next_followup_at__lte?: string;
+  last_contact_at__gte?: string;
+  last_contact_at__lte?: string;
   created_at__gte?: string;
+  created_at__lte?: string;
+  /** Exact created day, `YYYY-MM-DD`. */
+  created_date?: string;
+  /** Created on or after, `YYYY-MM-DD` — date-only alternative to created_at__gte. */
+  from_date?: string;
+  /** Created on or before, `YYYY-MM-DD`. */
+  to_date?: string;
   ordering?: string;
 }
 
