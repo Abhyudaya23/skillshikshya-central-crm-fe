@@ -30,6 +30,8 @@ export interface LeadFilterState {
   priority: string;
   overdueOnly: boolean;
   unassignedOnly: boolean;
+  /** Exact created day, `YYYY-MM-DD` ("" = unset) — maps to `?created_date=`. */
+  createdDate: string;
   /** Created on or after, `YYYY-MM-DD` ("" = unset) — maps to `?from_date=`. */
   dateFrom: string;
   /** Created on or before, `YYYY-MM-DD` ("" = unset) — maps to `?to_date=`. */
@@ -46,6 +48,7 @@ export const DEFAULT_FILTERS: LeadFilterState = {
   priority: "all",
   overdueOnly: false,
   unassignedOnly: false,
+  createdDate: "",
   dateFrom: "",
   dateTo: "",
 };
@@ -93,8 +96,9 @@ function activeChips(
       : v.dateFrom
         ? `Created from ${v.dateFrom}`
         : `Created up to ${v.dateTo}`;
-    chips.push({ key: "created", label, clear: { ...v, dateFrom: "", dateTo: "" } });
+    chips.push({ key: "created-range", label, clear: { ...v, dateFrom: "", dateTo: "" } });
   }
+  if (v.createdDate) chips.push({ key: "created-date", label: `Created on ${v.createdDate}`, clear: { ...v, createdDate: "" } });
   if (v.overdueOnly) chips.push({ key: "overdueOnly", label: "Overdue only", clear: { ...v, overdueOnly: false } });
   if (v.unassignedOnly) chips.push({ key: "unassignedOnly", label: "Unassigned only", clear: { ...v, unassignedOnly: false } });
   return chips;
@@ -257,6 +261,16 @@ export function LeadFilters({ value, onChange, options, showScopeToggles = true 
               extra={showScopeToggles ? [{ value: "unassigned", label: "Unassigned" }] : undefined}
             />
             <SheetSelect label="Priority" value={draft.priority} onChange={(v) => setDraftField("priority", v)} allLabel="All Priorities" options={options.priorities} />
+
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Created on</label>
+              <Input
+                type="date"
+                aria-label="Created on"
+                value={draft.createdDate}
+                onChange={(e) => setDraftField("createdDate", e.target.value)}
+              />
+            </div>
 
             <div className="grid gap-1.5">
               <label className="text-sm font-medium">Created between</label>

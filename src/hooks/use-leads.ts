@@ -51,8 +51,9 @@ export function buildApiParams(
     p.assigned_counselor = Number(f.assignedTo);
   }
   if (f.overdueOnly) p.next_followup_at__lte = new Date().toISOString();
-  // Date-only created range — the backend's `from_date`/`to_date` are inclusive
-  // whole days, so no timezone juggling is needed here.
+  // Date-only created filters — the backend's `from_date`/`to_date` and
+  // `created_date` are inclusive whole days, so no timezone juggling is needed.
+  if (f.createdDate) p.created_date = f.createdDate;
   if (f.dateFrom) p.from_date = f.dateFrom;
   if (f.dateTo) p.to_date = f.dateTo;
   return p;
@@ -74,6 +75,7 @@ export function mockMatch(l: LeadListItem, f: LeadFilterState): boolean {
   if (f.course !== "all" && l.primaryCourseId !== f.course) return false;
   // createdAt is an ISO timestamp; compare on the date part so the range is inclusive.
   const createdDay = l.createdAt.slice(0, 10);
+  if (f.createdDate && createdDay !== f.createdDate) return false;
   if (f.dateFrom && createdDay < f.dateFrom) return false;
   if (f.dateTo && createdDay > f.dateTo) return false;
   if (f.search.trim()) {
