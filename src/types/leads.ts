@@ -115,6 +115,8 @@ export interface CourseInterest {
 
 export interface Activity {
   id: string;
+  /** Calls only — backend LeadCall id (for PATCH updates). */
+  apiCallId?: number;
   type: ActivityType;
   /** ISO timestamp. */
   at: string;
@@ -126,6 +128,8 @@ export interface Activity {
   /** Calls only — inbound vs outbound, for the call-history table. */
   direction?: "inbound" | "outbound";
   durationSeconds?: number;
+  /** Calls only — recording URL, editable after logging. */
+  recordingUrl?: string;
   followUpAt?: string;
   /** Calls only — the agreed next step after this touchpoint. */
   nextAction?: string;

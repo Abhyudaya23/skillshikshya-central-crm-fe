@@ -48,7 +48,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDataSource } from "@/context/data-source";
 import { useCompleteFollowup } from "@/hooks/use-followups";
 import { useDeleteLead, useLead } from "@/hooks/use-leads";
-import { EnrollmentDialog, PaymentDialog } from "@/pages/leads/components/enrollment-dialogs";
+import { EnrollmentsPanel, LeadPaymentsPanel } from "@/pages/leads/components/enrollments-panel";
 import { StudentFormDialog } from "@/pages/students/student-form-dialog";
 import {
   formatDate,
@@ -63,6 +63,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Activity, Lead, LeadCustomData } from "@/types/leads";
 import { ActivityTimeline } from "./components/activity-timeline";
+import { EditCallDialog } from "./components/edit-call-dialog";
 import { LeadActionDialogs, type LeadAction } from "./components/lead-action-dialogs";
 import { PriorityBadge, ScoreBar, StatusBadge } from "./components/lead-badges";
 
@@ -174,7 +175,13 @@ const CALL_OUTCOME_TONE: Record<string, string> = {
   wrong_number: "bg-destructive/10 text-destructive",
 };
 
-function CallHistory({ calls }: { calls: Activity[] }) {
+function CallHistory({
+  calls,
+  onEdit,
+}: {
+  calls: Activity[];
+  onEdit?: (c: Activity) => void;
+}) {
   if (calls.length === 0) {
     return <p className="text-muted-foreground py-6 text-center text-sm">No calls logged yet.</p>;
   }
@@ -190,6 +197,7 @@ function CallHistory({ calls }: { calls: Activity[] }) {
             <th className="py-2 pr-3 font-semibold">Outcome</th>
             <th className="py-2 pr-3 font-semibold">Notes</th>
             <th className="py-2 pr-3 font-semibold">Next action</th>
+            {onEdit && <th className="w-10" />}
           </tr>
         </thead>
         <tbody>
@@ -223,6 +231,19 @@ function CallHistory({ calls }: { calls: Activity[] }) {
                 )}
               </td>
               <td className="text-muted-foreground py-2.5 pr-3">{c.nextAction ?? "—"}</td>
+              {onEdit && (
+                <td className="py-2.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    title="Edit call"
+                    onClick={() => onEdit(c)}
+                  >
+                    <PencilLine />
+                  </Button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -252,9 +273,8 @@ export default function LeadDetailPage() {
   const { source } = useDataSource();
   const { lead, isLoading, notFound } = useLead(id);
   const [action, setAction] = useState<LeadAction>(null);
+  const [editingCall, setEditingCall] = useState<Activity | null>(null);
   const [convertOpen, setConvertOpen] = useState(false);
-  const [enrollOpen, setEnrollOpen] = useState(false);
-  const [payOpen, setPayOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteLead = useDeleteLead();
   const completeFollowup = useCompleteFollowup();
@@ -580,7 +600,12 @@ export default function LeadDetailPage() {
                   )
                 }
               >
-                <CallHistory calls={calls} />
+                <CallHistory
+                  calls={calls}
+                  onEdit={
+                    source === "api" && can("leads.log_activity") ? setEditingCall : undefined
+                  }
+                />
               </Section>
             </TabsContent>
 
@@ -616,7 +641,13 @@ export default function LeadDetailPage() {
 
             {/* Enrollment */}
             <TabsContent value="enrollment">
-              {lead.enrollment ? (
+              {source === "api" ? (
+                <EnrollmentsPanel
+                  leadId={lead.apiId}
+                  primaryCourseId={lead.primaryCourseId}
+                  canManage={can("enrollment.manage")}
+                />
+              ) : lead.enrollment ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -644,11 +675,7 @@ export default function LeadDetailPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() =>
-                          source === "api"
-                            ? setPayOpen(true)
-                            : toast.info("Add payment — switch to Live to record")
-                        }
+                        onClick={() => toast.info("Add payment — switch to Live to record")}
                       >
                         Add Payment
                       </Button>
@@ -663,11 +690,7 @@ export default function LeadDetailPage() {
                       size="sm"
                       variant="outline"
                       className="mt-3"
-                      onClick={() =>
-                        source === "api"
-                          ? setEnrollOpen(true)
-                          : toast.info("Create enrollment — switch to Live to create")
-                      }
+                      onClick={() => toast.info("Create enrollment — switch to Live to create")}
                     >
                       Create Enrollment
                     </Button>
@@ -678,7 +701,9 @@ export default function LeadDetailPage() {
 
             {/* Payments */}
             <TabsContent value="payments">
-              {lead.payments.length > 0 ? (
+              {source === "api" ? (
+                <LeadPaymentsPanel leadId={lead.apiId} />
+              ) : lead.payments.length > 0 ? (
                 <ul className="divide-border divide-y">
                   {lead.payments.map((p) => (
                     <li key={p.id} className="flex items-center justify-between gap-4 py-3">
@@ -747,20 +772,14 @@ export default function LeadDetailPage() {
       </Card>
 
       <LeadActionDialogs action={action} lead={lead} onClose={() => setAction(null)} />
+      {source === "api" && lead.apiId != null && (
+        <EditCallDialog
+          leadId={lead.apiId}
+          call={editingCall}
+          onClose={() => setEditingCall(null)}
+        />
+      )}
       <StudentFormDialog open={convertOpen} onClose={() => setConvertOpen(false)} fromLead={lead} />
-      <EnrollmentDialog
-        open={enrollOpen}
-        onClose={() => setEnrollOpen(false)}
-        leadId={lead.apiId}
-        primaryCourseId={lead.primaryCourseId}
-      />
-      <PaymentDialog
-        open={payOpen}
-        onClose={() => setPayOpen(false)}
-        leadId={lead.apiId}
-        enrollmentApiId={lead.enrollment ? Number(lead.enrollment.id.replace("enr-", "")) : undefined}
-      />
-
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

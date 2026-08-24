@@ -264,6 +264,7 @@ export type ApiEnrollmentStatus =
 export interface ApiEnrollment {
   id: number;
   lead?: number;
+  lead_name?: string;
   course: number;
   course_name?: string;
   student: number | null;
@@ -277,10 +278,14 @@ export interface ApiEnrollment {
   additional_discount: string;
   agreed_amount: string;
   remarks: string | null;
+  branch?: number | null;
+  branch_name?: string | null;
   total_paid: string;
   remaining_amount: string;
   is_full_paid: boolean;
+  created_by?: number | null;
   created_by_name?: string;
+  updated_by?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -296,6 +301,23 @@ export interface ApiEnrollmentPayload {
   additional_discount?: string;
   agreed_amount?: string;
   remarks?: string | null;
+  branch?: number | null;
+}
+
+/** Query params for GET /api/leads/{lead}/enrollments/. */
+export interface EnrollmentListParams {
+  course?: number;
+  status?: ApiEnrollmentStatus | string;
+  /** Batch **name** (per the API guide), not the FK id. */
+  batch?: string;
+  enrollment_date__gte?: string;
+  enrollment_date__lte?: string;
+  /** `id`, `enrollment_date`, `status` (prefix `-` to reverse). */
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+  /** Branch scoping (staff only). */
+  branch_id?: number;
 }
 
 export type ApiPaymentStatus = "pending" | "successful" | "failed" | "refunded" | "voided";
@@ -310,6 +332,8 @@ export interface ApiPayment {
   transaction_reference: string | null;
   status: ApiPaymentStatus;
   notes: string | null;
+  branch?: number | null;
+  received_by?: number | null;
   received_by_name?: string;
   created_at?: string;
 }
@@ -321,6 +345,18 @@ export interface ApiPaymentPayload {
   transaction_reference?: string | null;
   status?: ApiPaymentStatus;
   notes?: string | null;
+}
+
+/** Query params for GET /api/leads/{lead}/enrollments/{id}/payments/. */
+export interface PaymentListParams {
+  payment_method?: ApiPaymentMethod | string;
+  status?: ApiPaymentStatus | string;
+  payment_date__gte?: string;
+  payment_date__lte?: string;
+  /** `payment_date` (prefix `-` to reverse). */
+  ordering?: string;
+  page?: number;
+  page_size?: number;
 }
 
 /* --------------------------------------------------------------- locations */

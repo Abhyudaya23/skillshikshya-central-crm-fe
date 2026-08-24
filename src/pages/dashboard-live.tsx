@@ -1,21 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, Sparkles, Users } from "lucide-react";
+import { CalendarClock, CheckCircle2, Sparkles, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { DonutChart, HBarList } from "@/components/charts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DonutChart, HBarList, MiniBars } from "@/components/charts";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { leadsService, type LeadListParams } from "@/services/leads.service";
+import { useAuth } from "@/context/auth";
+import { useBranches } from "@/hooks/use-branches";
+import {
+  useLeadTrend,
+  useLeadsBySource,
+  useLeadsByStatus,
+  useReportsOverview,
+} from "@/hooks/use-reports";
+import { leadsService } from "@/services/leads.service";
+import type { ReportBaseParams } from "@/types/reports-api";
+import { formatNPR, formatDate } from "@/lib/leads-format";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/leads-format";
 
 const DONUT_COLORS = ["#00694c", "#008561", "#67dbae", "#f59e0b", "#64748b", "#0ea5e9", "#a855f7"];
 
-function useCount(key: string, params: LeadListParams) {
-  return useQuery({
-    queryKey: ["lead-count", key],
-    queryFn: () => leadsService.list({ ...params, page: 1, page_size: 1 }).then((d) => d.count),
-    staleTime: 60 * 1000,
-  });
+function monthStart() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function Kpi({
@@ -26,7 +51,7 @@ function Kpi({
   tone,
 }: {
   label: string;
-  value: number | undefined;
+  value: string | number | undefined;
   loading: boolean;
   icon: React.ComponentType<{ className?: string }>;
   tone: string;
@@ -50,72 +75,138 @@ function Kpi({
   );
 }
 
+/** Live dashboard driven entirely by /api/reports/* aggregate endpoints. */
 export function LiveDashboard({ firstName }: { firstName: string }) {
-  const now = new Date().toISOString();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const { user } = useAuth();
+  const isStaff = !!user?.is_staff;
+  const [branchId, setBranchId] = useState<string>("all");
 
-  const total = useCount("total", {});
-  const converted = useCount("converted", { is_converted: true });
-  const due = useCount("due", { next_followup_at__lte: now });
-  const thisMonth = useCount("month", { created_at__gte: monthStart });
+  const branches = useBranches(1, 100, "", isStaff);
 
-  // A sample of the latest leads drives the distribution charts (approximate for
-  // large datasets — see lead-additional.md; real aggregates await BE endpoints).
-  const sampleQ = useQuery({
-    queryKey: ["lead-sample"],
-    queryFn: () => leadsService.list({ page: 1, page_size: 100, ordering: "-created_at" }),
+  // Current-month window for the overview snapshot + trend.
+  const range = useMemo<ReportBaseParams>(
+    () => ({
+      start_date: monthStart(),
+      end_date: today(),
+      branch_id: branchId === "all" ? undefined : Number(branchId),
+    }),
+    [branchId],
+  );
+
+  const overview = useReportsOverview(range);
+  const byStatus = useLeadsByStatus({ branch_id: range.branch_id });
+  const bySource = useLeadsBySource({ branch_id: range.branch_id });
+  const trend = useLeadTrend({ ...range, group_by: "day" });
+
+  // Recent leads still come straight from the lead list (not a report).
+  const recentQ = useQuery({
+    queryKey: ["lead-recent", range.branch_id ?? null],
+    queryFn: () =>
+      leadsService.list({
+        page: 1,
+        page_size: 6,
+        ordering: "-created_at",
+        branch_id: range.branch_id,
+      }),
     staleTime: 60 * 1000,
   });
-  const sample = sampleQ.data?.results ?? [];
 
-  const byStatus = new Map<string, { count: number; color: string }>();
-  const bySource = new Map<string, number>();
-  for (const l of sample) {
-    const sName = l.status_name ?? "—";
-    byStatus.set(sName, { count: (byStatus.get(sName)?.count ?? 0) + 1, color: l.status_color ?? "#64748b" });
-    const src = l.source_name ?? "—";
-    bySource.set(src, (bySource.get(src) ?? 0) + 1);
-  }
-  const statusBars = [...byStatus.entries()].map(([label, v]) => ({ label, value: v.count }));
-  const sourceSlices = [...bySource.entries()]
-    .sort((a, b) => b[1] - a[1])
+  const statusBars = (byStatus.data?.results ?? []).map((r) => ({
+    label: r.status__name,
+    value: r.count,
+  }));
+
+  const totalForPct = byStatus.data?.total ?? 0;
+  const sourceSlices = (bySource.data?.results ?? [])
+    .filter((r) => r.count > 0)
+    .sort((a, b) => b.count - a.count)
     .slice(0, 6)
-    .map(([label, count], i) => ({
-      label,
-      count,
-      pct: Math.round((count / Math.max(1, sample.length)) * 100),
-      color: DONUT_COLORS[i % DONUT_COLORS.length],
-    }));
+    .map((r, i) => {
+      const name = r.source__name ?? r.campaign__name ?? "—";
+      return {
+        label: String(name),
+        count: r.count,
+        pct: Math.round((r.count / Math.max(1, totalForPct)) * 100),
+        color: DONUT_COLORS[i % DONUT_COLORS.length],
+      };
+    });
 
-  const recent = sample.slice(0, 6);
+  const followupsDue =
+    (overview.data?.communication.followups.pending ?? 0) +
+    (overview.data?.communication.followups.overdue ?? 0);
+  const recent = recentQ.data?.results ?? [];
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-brand font-mono text-[11px] font-bold tracking-wider uppercase">
-          CRM command center
-        </p>
-        <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">
-          Welcome back, {firstName} 👋
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">Live pipeline snapshot from the backend.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-brand font-mono text-[11px] font-bold tracking-wider uppercase">
+            CRM command center
+          </p>
+          <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">
+            Welcome back, {firstName} 👋
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Aggregated pipeline snapshot · {monthStart()} → {today()}
+          </p>
+        </div>
+        {isStaff && (
+          <Select value={branchId} onValueChange={setBranchId}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All branches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All branches</SelectItem>
+              {branches.data?.results.map((b) => (
+                <SelectItem key={b.id} value={String(b.id)}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
+      {/* KPI row — overview report */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Total leads" value={total.data} loading={total.isLoading} icon={Users} tone="text-sky-600 dark:text-sky-400" />
-        <Kpi label="Follow-ups due" value={due.data} loading={due.isLoading} icon={CalendarClock} tone="text-destructive" />
-        <Kpi label="New this month" value={thisMonth.data} loading={thisMonth.isLoading} icon={Sparkles} tone="text-brand" />
-        <Kpi label="Converted" value={converted.data} loading={converted.isLoading} icon={CheckCircle2} tone="text-emerald-600 dark:text-emerald-400" />
+        <Kpi
+          label="New this month"
+          value={overview.data?.leads.new_in_range}
+          loading={overview.isLoading}
+          icon={Sparkles}
+          tone="text-brand"
+        />
+        <Kpi
+          label={`Converted (${overview.data ? `${overview.data.leads.conversion_rate}%` : "…"})`}
+          value={overview.data?.leads.converted_in_range}
+          loading={overview.isLoading}
+          icon={CheckCircle2}
+          tone="text-emerald-600 dark:text-emerald-400"
+        />
+        <Kpi
+          label="Follow-ups due"
+          value={overview.data ? followupsDue : undefined}
+          loading={overview.isLoading}
+          icon={CalendarClock}
+          tone="text-destructive"
+        />
+        <Kpi
+          label="Revenue collected"
+          value={overview.data ? formatNPR(Number(overview.data.enrollments.revenue_collected)) : undefined}
+          loading={overview.isLoading}
+          icon={Wallet}
+          tone="text-sky-600 dark:text-sky-400"
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Status distribution</CardTitle>
-            <CardDescription>Latest {sample.length} leads by status</CardDescription>
+            <CardDescription>All leads by status</CardDescription>
           </CardHeader>
           <CardContent>
-            {sampleQ.isLoading ? (
+            {byStatus.isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : statusBars.length ? (
               <HBarList data={statusBars} />
@@ -127,10 +218,10 @@ export function LiveDashboard({ firstName }: { firstName: string }) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Lead sources</CardTitle>
-            <CardDescription>Latest {sample.length} leads</CardDescription>
+            <CardDescription>Share of all leads</CardDescription>
           </CardHeader>
           <CardContent>
-            {sampleQ.isLoading ? (
+            {bySource.isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : sourceSlices.length ? (
               <DonutChart slices={sourceSlices} />
@@ -140,6 +231,26 @@ export function LiveDashboard({ firstName }: { firstName: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Daily lead flow</CardTitle>
+          <CardDescription>New leads and conversions per day this month</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {trend.isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (
+            <>
+              <MiniBars values={(trend.data?.results ?? []).map((r) => r.leads)} />
+              <div className="text-muted-foreground mt-2 flex justify-between text-xs tabular-nums">
+                <span>{trend.data?.results[0]?.period && formatDate(trend.data.results[0].period)}</span>
+                <span>{trend.data ? `revenue ${formatNPR(Number(trend.data.results.reduce((s, r) => s + Number(r.revenue), 0)))}` : ""}</span>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -162,14 +273,17 @@ export function LiveDashboard({ firstName }: { firstName: string }) {
               {l.status_name && (
                 <span
                   className="rounded-full px-2 py-0.5 text-xs font-medium"
-                  style={{ color: l.status_color ?? undefined, backgroundColor: `${l.status_color ?? "#64748b"}1f` }}
+                  style={{
+                    color: l.status_color ?? undefined,
+                    backgroundColor: `${l.status_color ?? "#64748b"}1f`,
+                  }}
                 >
                   {l.status_name}
                 </span>
               )}
             </Link>
           ))}
-          {!sampleQ.isLoading && recent.length === 0 && (
+          {!recentQ.isLoading && recent.length === 0 && (
             <p className="text-muted-foreground py-6 text-center text-sm">No leads yet.</p>
           )}
         </CardContent>

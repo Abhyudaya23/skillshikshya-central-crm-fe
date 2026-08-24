@@ -37,6 +37,8 @@ export interface User {
   branch: number | null;
   /** Denormalized branch label (read-only). */
   branch_name?: string | null;
+  /** Remaining call minutes (read-only; consumed by lead calls, topped up by admins). */
+  call_minutes_balance?: number | null;
 }
 
 export interface RegisterPayload {

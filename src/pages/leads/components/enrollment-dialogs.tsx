@@ -20,8 +20,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCourses } from "@/hooks/use-courses";
 import { useCourseBatches } from "@/hooks/use-batches";
-import { useAddEnrollment, useAddPayment } from "@/hooks/use-leads";
+import { useAddEnrollment, useAddPayment, useUpdateEnrollment } from "@/hooks/use-leads";
 import type {
+  ApiEnrollment,
   ApiEnrollmentPayload,
   ApiEnrollmentStatus,
   ApiPaymentMethod,
@@ -51,13 +52,17 @@ export function EnrollmentDialog({
   onClose,
   leadId,
   primaryCourseId,
+  enrollment,
 }: {
   open: boolean;
   onClose: () => void;
   leadId?: number;
   primaryCourseId?: number | null;
+  /** Pass an existing enrollment to edit it (PATCH) instead of creating one. */
+  enrollment?: ApiEnrollment | null;
 }) {
   const [f, setF] = useState<ApiEnrollmentPayload>({});
+  const isEdit = !!enrollment;
 
   const coursesQ = useCourses(1, 100, "");
   const courses = useMemo(() => coursesQ.data?.results ?? [], [coursesQ.data]);
@@ -67,9 +72,26 @@ export function EnrollmentDialog({
   );
   const batches = useMemo(() => batchesQ.data?.results ?? [], [batchesQ.data]);
   const addEnrollment = useAddEnrollment(leadId);
+  const updateEnrollment = useUpdateEnrollment(leadId);
+  const saving = addEnrollment.isPending || updateEnrollment.isPending;
 
   useEffect(() => {
     if (!open) return;
+    if (enrollment) {
+      setF({
+        course: enrollment.course,
+        batch: enrollment.batch,
+        student: enrollment.student,
+        enrollment_date: enrollment.enrollment_date ?? new Date().toISOString().slice(0, 10),
+        status: enrollment.status,
+        listed_fee: enrollment.listed_fee,
+        standard_discount: enrollment.standard_discount,
+        additional_discount: enrollment.additional_discount,
+        agreed_amount: enrollment.agreed_amount,
+        remarks: enrollment.remarks ?? "",
+      });
+      return;
+    }
     setF({
       course: primaryCourseId ?? undefined,
       batch: undefined,
@@ -81,7 +103,7 @@ export function EnrollmentDialog({
       agreed_amount: "0",
       remarks: "",
     });
-  }, [open, primaryCourseId]);
+  }, [open, primaryCourseId, enrollment]);
 
   const set = <K extends keyof ApiEnrollmentPayload>(k: K, v: ApiEnrollmentPayload[K]) =>
     setF((p) => ({ ...p, [k]: v }));
@@ -91,14 +113,19 @@ export function EnrollmentDialog({
 
   function submit() {
     if (!f.course) return;
-    addEnrollment.mutate({ ...f, agreed_amount: f.agreed_amount || agreedAuto }, { onSuccess: () => onClose() });
+    const payload = { ...f, agreed_amount: f.agreed_amount || agreedAuto };
+    if (enrollment) {
+      updateEnrollment.mutate({ id: enrollment.id, payload }, { onSuccess: () => onClose() });
+      return;
+    }
+    addEnrollment.mutate(payload, { onSuccess: () => onClose() });
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create enrollment</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit enrollment" : "Create enrollment"}</DialogTitle>
           <DialogDescription>Record the course, batch, and agreed fee.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
@@ -199,8 +226,8 @@ export function EnrollmentDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="brand" onClick={submit} disabled={addEnrollment.isPending}>
-            {addEnrollment.isPending ? "Saving…" : "Create Enrollment"}
+          <Button variant="brand" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Enrollment"}
           </Button>
         </DialogFooter>
       </DialogContent>

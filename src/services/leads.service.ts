@@ -4,6 +4,8 @@ import type {
   ApiCourseInterest,
   ApiEnrollment,
   ApiEnrollmentPayload,
+  EnrollmentListParams,
+  PaymentListParams,
   ApiFollowup,
   ApiLead,
   ApiLeadActivity,
@@ -108,8 +110,14 @@ export const leadsService = {
   async removeCourseInterest(leadId: number, id: number) {
     await api.delete(`/leads/${leadId}/course-interests/${id}/`);
   },
-  async enrollments(leadId: number) {
-    const { data } = await api.get<Paginated<ApiEnrollment>>(`/leads/${leadId}/enrollments/`);
+  async enrollments(leadId: number, params: EnrollmentListParams = {}) {
+    const { data } = await api.get<Paginated<ApiEnrollment>>(`/leads/${leadId}/enrollments/`, {
+      params,
+    });
+    return data;
+  },
+  async enrollment(leadId: number, id: number) {
+    const { data } = await api.get<ApiEnrollment>(`/leads/${leadId}/enrollments/${id}/`);
     return data;
   },
   async addEnrollment(leadId: number, payload: ApiEnrollmentPayload) {
@@ -120,9 +128,19 @@ export const leadsService = {
     const { data } = await api.patch<ApiEnrollment>(`/leads/${leadId}/enrollments/${id}/`, payload);
     return data;
   },
-  async payments(leadId: number, enrollmentId: number) {
+  async deleteEnrollment(leadId: number, id: number) {
+    await api.delete(`/leads/${leadId}/enrollments/${id}/`);
+  },
+  async payments(leadId: number, enrollmentId: number, params: PaymentListParams = {}) {
     const { data } = await api.get<Paginated<ApiPayment>>(
       `/leads/${leadId}/enrollments/${enrollmentId}/payments/`,
+      { params },
+    );
+    return data;
+  },
+  async payment(leadId: number, enrollmentId: number, id: number) {
+    const { data } = await api.get<ApiPayment>(
+      `/leads/${leadId}/enrollments/${enrollmentId}/payments/${id}/`,
     );
     return data;
   },
@@ -133,12 +151,20 @@ export const leadsService = {
     );
     return data;
   },
+  async deletePayment(leadId: number, enrollmentId: number, id: number) {
+    await api.delete(`/leads/${leadId}/enrollments/${enrollmentId}/payments/${id}/`);
+  },
   async calls(leadId: number) {
     const { data } = await api.get<Paginated<ApiLeadCall>>(`/leads/${leadId}/calls/`);
     return data;
   },
   async addCall(leadId: number, payload: Partial<ApiLeadCall>) {
     const { data } = await api.post<ApiLeadCall>(`/leads/${leadId}/calls/`, payload);
+    return data;
+  },
+  /** PATCH a call — backend silently ignores duration_seconds/caller changes. */
+  async updateCall(leadId: number, callId: number, payload: Partial<ApiLeadCall>) {
+    const { data } = await api.patch<ApiLeadCall>(`/leads/${leadId}/calls/${callId}/`, payload);
     return data;
   },
   async activities(leadId: number) {

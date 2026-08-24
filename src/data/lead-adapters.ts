@@ -279,13 +279,17 @@ export function adaptApiCall(c: ApiLeadCall): Activity {
   const dir = c.direction === "inbound" ? "Inbound" : "Outbound";
   return {
     id: `call-${c.id}`,
+    /** Backend LeadCall id — used by the edit-call dialog to PATCH. */
+    apiCallId: c.id,
     type: "call",
     at: c.call_timestamp,
     performedBy: c.created_by_name ?? c.caller_name ?? "—",
     title: `${dir} call${c.outcome ? ` — ${c.outcome}` : ""}`,
     channel: "phone",
     direction: c.direction,
+    outcome: (c.outcome as Activity["outcome"]) ?? undefined,
     durationSeconds: c.duration_seconds ?? undefined,
+    recordingUrl: c.recording_url ?? undefined,
     notes: c.notes ?? undefined,
     nextAction: c.next_action ?? undefined,
     followUpAt: c.next_followup_at ?? undefined,

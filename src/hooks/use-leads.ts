@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useDataSource } from "@/context/data-source";
 import { apiErrorMessage } from "@/lib/api";
@@ -17,12 +23,16 @@ import { getLeadById, LEAD_LIST } from "@/data/mock-leads";
 import { isOverdue } from "@/lib/leads-format";
 import { leadsService, type LeadListParams } from "@/services/leads.service";
 import type {
+  ApiEnrollment,
   ApiEnrollmentPayload,
   ApiFollowup,
   ApiLeadCall,
   ApiLeadDocument,
   ApiLeadPayload,
+  ApiPayment,
   ApiPaymentPayload,
+  EnrollmentListParams,
+  PaymentListParams,
 } from "@/types/leads-api";
 import type { Lead, LeadListItem, LeadTypeCode } from "@/types/leads";
 import type { LeadFilterState } from "@/pages/leads/components/lead-filters";
@@ -156,7 +166,7 @@ export function useLead(routeId?: string): LeadDetailResult {
         leadsService.followups(numId).catch(() => EMPTY_PAGE),
         leadsService.documents(numId).catch(() => EMPTY_PAGE),
         leadsService.courseInterests(numId).catch(() => EMPTY_PAGE),
-        leadsService.enrollments(numId).catch(() => EMPTY_PAGE),
+        leadsService.enrollments(numId, { ordering: "-id" }).catch(() => EMPTY_PAGE),
       ]);
       const ui = adaptApiLead(lead);
       ui.activities = [
@@ -166,10 +176,15 @@ export function useLead(routeId?: string): LeadDetailResult {
       ui.followUps = fus.results.map(adaptApiFollowup);
       if (interests.results.length) ui.courseInterests = interests.results.map(adaptApiCourseInterest);
 
-      const firstEnr = enrolls.results[0];
-      if (firstEnr) {
-        ui.enrollment = adaptApiEnrollment(firstEnr);
-        const pays = await leadsService.payments(numId, firstEnr.id).catch(() => EMPTY_PAGE);
+      // `enrollments` is ordered newest-first, so results[0] is the latest one;
+      // it feeds the hero/summary. The Enrollment tab lists them all via
+      // `useLeadEnrollments`.
+      const latestEnr = enrolls.results[0];
+      if (latestEnr) {
+        ui.enrollment = adaptApiEnrollment(latestEnr);
+        const pays = await leadsService
+          .payments(numId, latestEnr.id, { ordering: "-payment_date" })
+          .catch(() => EMPTY_PAGE);
         ui.payments = pays.results.map(adaptApiPayment);
       }
       return { lead: ui, documents: docs.results as ApiLeadDocument[] };
@@ -401,6 +416,21 @@ export function useAddCall(leadId?: number) {
   });
 }
 
+/** PATCH an existing lead call (outcome/notes/next steps). */
+export function useUpdateCall(leadId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ callId, payload }: { callId: number; payload: Partial<ApiLeadCall> }) =>
+      leadsService.updateCall(leadId as number, callId, payload),
+    onSuccess: () => {
+      toast.success("Call updated");
+      void qc.invalidateQueries({ queryKey: ["lead"] });
+      void qc.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not update call")),
+  });
+}
+
 export function useAddFollowup(leadId?: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -414,6 +444,86 @@ export function useAddFollowup(leadId?: number) {
   });
 }
 
+/* ------------------------------------------- enrollments & payments (live) */
+// Nested under a lead: /api/leads/{lead}/enrollments/[{id}/payments/].
+// See be-mds/lead_app_enrollments_payments_api_guide.md.
+
+/** All enrollments of one lead (newest first by default). */
+export function useLeadEnrollments(leadId?: number, params: EnrollmentListParams = {}) {
+  const { source } = useDataSource();
+  const enabled = source === "api" && leadId != null;
+  const query = useQuery({
+    queryKey: ["lead", "enrollments", leadId, params],
+    enabled,
+    queryFn: () => leadsService.enrollments(leadId as number, { ordering: "-id", ...params }),
+    placeholderData: keepPreviousData,
+  });
+  return {
+    enrollments: (query.data?.results ?? []) as ApiEnrollment[],
+    count: query.data?.count ?? 0,
+    isLoading: enabled && query.isLoading,
+    isFetching: enabled && query.isFetching,
+  };
+}
+
+/** Payments of one enrollment (newest first by default). */
+export function useEnrollmentPayments(
+  leadId?: number,
+  enrollmentId?: number,
+  params: PaymentListParams = {},
+) {
+  const { source } = useDataSource();
+  const enabled = source === "api" && leadId != null && enrollmentId != null;
+  const query = useQuery({
+    queryKey: ["lead", "payments", leadId, enrollmentId, params],
+    enabled,
+    queryFn: () =>
+      leadsService.payments(leadId as number, enrollmentId as number, {
+        ordering: "-payment_date",
+        page_size: 100,
+        ...params,
+      }),
+    placeholderData: keepPreviousData,
+  });
+  return {
+    payments: (query.data?.results ?? []) as ApiPayment[],
+    isLoading: enabled && query.isLoading,
+  };
+}
+
+/**
+ * Every payment of a lead, across all of its enrollments (newest first).
+ * Shares the cache with `useEnrollmentPayments` (same query keys).
+ */
+export function useLeadPayments(leadId?: number) {
+  const { source } = useDataSource();
+  const isApi = source === "api";
+  const { enrollments, isLoading: enrLoading } = useLeadEnrollments(leadId);
+
+  const queries = useQueries({
+    queries: enrollments.map((e) => ({
+      queryKey: ["lead", "payments", leadId, e.id, {}],
+      enabled: isApi && leadId != null,
+      queryFn: () =>
+        leadsService.payments(leadId as number, e.id, {
+          ordering: "-payment_date",
+          page_size: 100,
+        }),
+    })),
+  });
+
+  const rows = queries
+    .flatMap((q, i) =>
+      (q.data?.results ?? []).map((p) => ({ payment: p as ApiPayment, enrollment: enrollments[i] })),
+    )
+    .sort((a, b) => +new Date(b.payment.payment_date) - +new Date(a.payment.payment_date));
+
+  return {
+    rows,
+    isLoading: enrLoading || queries.some((q) => q.isLoading && q.fetchStatus !== "idle"),
+  };
+}
+
 export function useAddEnrollment(leadId?: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -422,8 +532,39 @@ export function useAddEnrollment(leadId?: number) {
       toast.success("Enrollment created");
       void qc.invalidateQueries({ queryKey: ["lead"] });
       void qc.invalidateQueries({ queryKey: ["leads"] });
+      void qc.invalidateQueries({ queryKey: ["enrollments"] });
     },
     onError: (e) => toast.error(apiErrorMessage(e, "Could not create enrollment")),
+  });
+}
+
+export function useUpdateEnrollment(leadId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ApiEnrollmentPayload }) =>
+      leadsService.updateEnrollment(leadId as number, id, payload),
+    onSuccess: () => {
+      toast.success("Enrollment updated");
+      void qc.invalidateQueries({ queryKey: ["lead"] });
+      void qc.invalidateQueries({ queryKey: ["leads"] });
+      void qc.invalidateQueries({ queryKey: ["enrollments"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not update enrollment")),
+  });
+}
+
+export function useDeleteEnrollment(leadId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => leadsService.deleteEnrollment(leadId as number, id),
+    onSuccess: () => {
+      toast.success("Enrollment deleted");
+      void qc.invalidateQueries({ queryKey: ["lead"] });
+      void qc.invalidateQueries({ queryKey: ["leads"] });
+      void qc.invalidateQueries({ queryKey: ["enrollments"] });
+      void qc.invalidateQueries({ queryKey: ["payments"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not delete enrollment")),
   });
 }
 
@@ -435,8 +576,25 @@ export function useAddPayment(leadId?: number, enrollmentId?: number) {
     onSuccess: () => {
       toast.success("Payment recorded");
       void qc.invalidateQueries({ queryKey: ["lead"] });
+      void qc.invalidateQueries({ queryKey: ["enrollments"] });
+      void qc.invalidateQueries({ queryKey: ["payments"] });
     },
     onError: (e) => toast.error(apiErrorMessage(e, "Could not record payment")),
+  });
+}
+
+export function useDeletePayment(leadId?: number, enrollmentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      leadsService.deletePayment(leadId as number, enrollmentId as number, id),
+    onSuccess: () => {
+      toast.success("Payment deleted");
+      void qc.invalidateQueries({ queryKey: ["lead"] });
+      void qc.invalidateQueries({ queryKey: ["enrollments"] });
+      void qc.invalidateQueries({ queryKey: ["payments"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not delete payment")),
   });
 }
 

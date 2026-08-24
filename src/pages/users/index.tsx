@@ -35,6 +35,7 @@ import { useDeleteUser, useUsers } from "@/hooks/use-users";
 import { apiErrorMessage } from "@/lib/api";
 import { usersService } from "@/services/users.service";
 import type { User } from "@/types";
+import { CallMinutesDialog } from "./call-minutes-dialog";
 import { UserFormDialog } from "./user-form-dialog";
 
 const PAGE_SIZE = 20;
@@ -49,6 +50,7 @@ export default function UsersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [deleting, setDeleting] = useState<User | null>(null);
+  const [minutesUser, setMinutesUser] = useState<User | null>(null);
 
   // Debounce the search box, then let the backend do the filtering (?search=).
   useEffect(() => {
@@ -134,6 +136,7 @@ export default function UsersPage() {
               <TableHead>Phone</TableHead>
               <TableHead>Shift</TableHead>
               <TableHead>Call target</TableHead>
+              <TableHead>Minutes</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -142,14 +145,14 @@ export default function UsersPage() {
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={9}>
+                  <TableCell colSpan={10}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))}
             {!isLoading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-muted-foreground py-10 text-center">
+                <TableCell colSpan={10} className="text-muted-foreground py-10 text-center">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -200,6 +203,19 @@ export default function UsersPage() {
                   {u.daily_call_target_min != null ? `${u.daily_call_target_min} min/day` : "—"}
                 </TableCell>
                 <TableCell>
+                  {isStaff ? (
+                    <button
+                      type="button"
+                      className="hover:text-brand font-semibold"
+                      onClick={() => setMinutesUser(u)}
+                    >
+                      {u.call_minutes_balance ?? "—"}
+                    </button>
+                  ) : (
+                    <span className="text-muted-foreground">{u.call_minutes_balance ?? "—"}</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   {u.is_active ? (
                     <Badge variant="brand" className="text-[11px] font-bold uppercase">
                       Active
@@ -227,6 +243,11 @@ export default function UsersPage() {
                         >
                           Edit
                         </DropdownMenuItem>
+                        {isStaff && (
+                          <DropdownMenuItem onSelect={() => setMinutesUser(u)}>
+                            Call minutes
+                          </DropdownMenuItem>
+                        )}
                         {isStaff && u.id !== currentUser?.id && (
                           <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(u)}>
                             Delete
@@ -269,6 +290,8 @@ export default function UsersPage() {
       </div>
 
       <UserFormDialog open={formOpen} onOpenChange={setFormOpen} user={editing} />
+
+      <CallMinutesDialog user={minutesUser} open={minutesUser != null} onOpenChange={(o) => !o && setMinutesUser(null)} />
 
       <AlertDialog open={deleting != null} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

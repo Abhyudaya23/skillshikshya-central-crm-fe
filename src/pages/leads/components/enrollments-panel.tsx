@@ -1,0 +1,428 @@
+import { ChevronDown, ChevronRight, PencilLine, Plus, Receipt, Trash2 } from "lucide-react";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  useDeleteEnrollment,
+  useDeletePayment,
+  useEnrollmentPayments,
+  useLeadEnrollments,
+  useLeadPayments,
+} from "@/hooks/use-leads";
+import { formatDate, formatDateTime, formatNPR } from "@/lib/leads-format";
+import { cn } from "@/lib/utils";
+import type { ApiEnrollment, ApiEnrollmentStatus, ApiPaymentStatus } from "@/types/leads-api";
+import { EnrollmentDialog, PaymentDialog } from "./enrollment-dialogs";
+
+/* ------------------------------------------------------------ status tones */
+
+const ENROLLMENT_TONE: Record<ApiEnrollmentStatus, string> = {
+  pending: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  confirmed: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  completed: "bg-brand-fixed-dim/25 text-brand-container",
+  cancelled: "bg-muted text-muted-foreground",
+  dropped_out: "bg-destructive/10 text-destructive",
+  transferred: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+};
+
+const PAYMENT_TONE: Record<ApiPaymentStatus, string> = {
+  successful: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  pending: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  failed: "bg-destructive/10 text-destructive",
+  refunded: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  voided: "bg-muted text-muted-foreground",
+};
+
+function label(s: string) {
+  return s.replace(/_/g, " ");
+}
+
+function StatusPill({ status }: { status: ApiEnrollmentStatus }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-medium capitalize",
+        ENROLLMENT_TONE[status] ?? "bg-muted text-muted-foreground",
+      )}
+    >
+      {label(status)}
+    </span>
+  );
+}
+
+function Fee({ label: l, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-dashed py-1.5 last:border-0">
+      <span className="text-muted-foreground text-xs">{l}</span>
+      <span className={cn("text-sm", strong ? "font-semibold" : "font-medium")}>{value}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------- payments nested in enrollment */
+
+function EnrollmentPayments({
+  leadId,
+  enrollment,
+  canManage,
+}: {
+  leadId?: number;
+  enrollment: ApiEnrollment;
+  canManage: boolean;
+}) {
+  const { payments, isLoading } = useEnrollmentPayments(leadId, enrollment.id);
+  const deletePayment = useDeletePayment(leadId, enrollment.id);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+
+  if (isLoading) return <Skeleton className="h-16 w-full rounded-xl" />;
+  if (!payments.length)
+    return <p className="text-muted-foreground py-3 text-sm">No payments recorded yet.</p>;
+
+  return (
+    <>
+      <ul className="divide-border divide-y">
+        {payments.map((p) => (
+          <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{formatNPR(Number(p.amount))}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {formatDateTime(p.payment_date)} · {label(p.payment_method)} ·{" "}
+                {p.transaction_reference || "no ref"}
+                {p.received_by_name ? ` · by ${p.received_by_name}` : ""}
+              </p>
+              {p.notes && <p className="text-muted-foreground mt-0.5 text-xs italic">{p.notes}</p>}
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                  PAYMENT_TONE[p.status] ?? "bg-muted text-muted-foreground",
+                )}
+              >
+                {p.status}
+              </span>
+              {canManage && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive size-8"
+                  title="Delete payment"
+                  onClick={() => setConfirmId(p.id)}
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <AlertDialog open={confirmId != null} onOpenChange={(o) => !o && setConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this payment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The payment is removed permanently and the enrollment totals recalculate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmId != null) deletePayment.mutate(confirmId);
+                setConfirmId(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+/* -------------------------------------------------------- enrollment card */
+
+function EnrollmentCard({
+  leadId,
+  enrollment,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  leadId?: number;
+  enrollment: ApiEnrollment;
+  canManage: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [payOpen, setPayOpen] = useState(false);
+  const [showPayments, setShowPayments] = useState(false);
+  const agreed = Number(enrollment.agreed_amount);
+  const paid = Number(enrollment.total_paid);
+  const remaining = Number(enrollment.remaining_amount);
+  const pct = agreed > 0 ? Math.min(100, Math.round((paid / agreed) * 100)) : 0;
+
+  return (
+    <div className="rounded-2xl border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-headline text-lg font-semibold">{enrollment.course_name ?? "Course"}</p>
+          <p className="text-muted-foreground text-sm">
+            {enrollment.batch_name ? `Batch ${enrollment.batch_name}` : "No batch assigned"} ·
+            Enrolled {formatDate(enrollment.enrollment_date ?? undefined)}
+            {enrollment.branch_name ? ` · ${enrollment.branch_name}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusPill status={enrollment.status} />
+          {enrollment.is_full_paid && <Badge variant="brand">Fully paid</Badge>}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-x-8 sm:grid-cols-2">
+        <div>
+          <Fee label="Listed fee" value={formatNPR(Number(enrollment.listed_fee))} />
+          <Fee label="Standard discount" value={formatNPR(Number(enrollment.standard_discount))} />
+          <Fee
+            label="Additional discount"
+            value={formatNPR(Number(enrollment.additional_discount))}
+          />
+          <Fee label="Agreed amount" value={formatNPR(agreed)} strong />
+        </div>
+        <div>
+          <Fee label="Paid" value={formatNPR(paid)} />
+          <Fee label="Remaining" value={formatNPR(remaining)} strong />
+          {enrollment.student_name && <Fee label="Student" value={enrollment.student_name} />}
+          {enrollment.created_by_name && (
+            <Fee label="Created by" value={enrollment.created_by_name} />
+          )}
+        </div>
+      </div>
+
+      <div className="bg-muted mt-3 h-1.5 overflow-hidden rounded-full">
+        <div
+          className={cn("h-full rounded-full", remaining <= 0 ? "bg-emerald-500" : "bg-brand")}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-muted-foreground mt-1 text-xs">{pct}% of the agreed amount collected</p>
+
+      {enrollment.remarks && (
+        <p className="text-muted-foreground mt-3 text-sm">{enrollment.remarks}</p>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-muted-foreground -ml-2"
+          onClick={() => setShowPayments((v) => !v)}
+        >
+          {showPayments ? <ChevronDown /> : <ChevronRight />} Payments
+        </Button>
+        <div className="grow" />
+        {canManage && (
+          <>
+            <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+              <Receipt /> Add Payment
+            </Button>
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              <PencilLine /> Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 /> Delete
+            </Button>
+          </>
+        )}
+      </div>
+
+      {showPayments && (
+        <div className="mt-1 border-t pt-2">
+          <EnrollmentPayments leadId={leadId} enrollment={enrollment} canManage={canManage} />
+        </div>
+      )}
+
+      <PaymentDialog
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+        leadId={leadId}
+        enrollmentApiId={enrollment.id}
+      />
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- the panel */
+
+/** Enrollment tab (live path) — every enrollment of the lead with full CRUD. */
+export function EnrollmentsPanel({
+  leadId,
+  primaryCourseId,
+  canManage,
+}: {
+  leadId?: number;
+  primaryCourseId?: number | null;
+  canManage: boolean;
+}) {
+  const { enrollments, isLoading } = useLeadEnrollments(leadId);
+  const deleteEnrollment = useDeleteEnrollment(leadId);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<ApiEnrollment | null>(null);
+  const [deleting, setDeleting] = useState<ApiEnrollment | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {enrollments.length > 0 ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-muted-foreground text-sm">
+              {enrollments.length} enrollment{enrollments.length > 1 ? "s" : ""}
+            </p>
+            {canManage && (
+              <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+                <Plus /> New Enrollment
+              </Button>
+            )}
+          </div>
+          <div className="space-y-3">
+            {enrollments.map((e) => (
+              <EnrollmentCard
+                key={e.id}
+                leadId={leadId}
+                enrollment={e}
+                canManage={canManage}
+                onEdit={() => setEditing(e)}
+                onDelete={() => setDeleting(e)}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="py-8 text-center">
+          <p className="text-muted-foreground text-sm">This lead is not enrolled yet.</p>
+          {canManage && (
+            <Button size="sm" variant="outline" className="mt-3" onClick={() => setCreateOpen(true)}>
+              <Plus /> Create Enrollment
+            </Button>
+          )}
+        </div>
+      )}
+
+      <EnrollmentDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        leadId={leadId}
+        primaryCourseId={primaryCourseId}
+      />
+      <EnrollmentDialog
+        open={editing != null}
+        onClose={() => setEditing(null)}
+        leadId={leadId}
+        enrollment={editing}
+      />
+
+      <AlertDialog open={deleting != null} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this enrollment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{deleting?.course_name ?? "Course"}” and its recorded payments are removed
+              permanently. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleting) deleteEnrollment.mutate(deleting.id);
+                setDeleting(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+/** Payments tab (live path) — every payment of the lead across its enrollments. */
+export function LeadPaymentsPanel({ leadId }: { leadId?: number }) {
+  const { rows, isLoading } = useLeadPayments(leadId);
+
+  if (isLoading) return <Skeleton className="h-32 w-full rounded-2xl" />;
+  if (!rows.length)
+    return <p className="text-muted-foreground py-8 text-center text-sm">No payments recorded.</p>;
+
+  const collected = rows
+    .filter((r) => r.payment.status === "successful")
+    .reduce((s, r) => s + Number(r.payment.amount), 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-muted-foreground text-sm">
+          {rows.length} payment{rows.length > 1 ? "s" : ""} across {new Set(rows.map((r) => r.enrollment?.id)).size}{" "}
+          enrollment{new Set(rows.map((r) => r.enrollment?.id)).size > 1 ? "s" : ""}
+        </p>
+        <p className="text-sm font-semibold">{formatNPR(collected)} collected</p>
+      </div>
+      <ul className="divide-border divide-y">
+        {rows.map(({ payment: p, enrollment: e }) => (
+          <li key={p.id} className="flex items-center justify-between gap-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                {formatNPR(Number(p.amount))}
+                {e?.course_name && (
+                  <span className="text-muted-foreground font-normal"> · {e.course_name}</span>
+                )}
+              </p>
+              <p className="text-muted-foreground truncate text-xs">
+                {formatDateTime(p.payment_date)} · {label(p.payment_method)} ·{" "}
+                {p.transaction_reference || "no ref"}
+                {p.received_by_name ? ` · by ${p.received_by_name}` : ""}
+              </p>
+            </div>
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                PAYMENT_TONE[p.status] ?? "bg-muted text-muted-foreground",
+              )}
+            >
+              {p.status}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

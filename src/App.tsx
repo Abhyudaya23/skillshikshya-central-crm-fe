@@ -4,6 +4,7 @@ import { DataSourceProvider } from "@/context/data-source";
 import { RoleProvider } from "@/context/role";
 import BatchesPage from "@/pages/batches";
 import BranchesPage from "@/pages/branches";
+import CallMinutesPage from "@/pages/call-minutes";
 import ComingSoonPage from "@/pages/coming-soon";
 import CoursesPage from "@/pages/courses";
 import DashboardPage from "@/pages/dashboard";
@@ -57,7 +58,7 @@ export default function App() {
           <Route path="/users" element={<UsersPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/calls" element={<ComingSoonPage title="Calls" />} />
-          <Route path="/call-minutes" element={<ComingSoonPage title="Call Minutes" />} />
+          <Route path="/call-minutes" element={<CallMinutesPage />} />
           <Route path="*" element={<ComingSoonPage title="Not found" />} />
           </Route>
         </Routes>
