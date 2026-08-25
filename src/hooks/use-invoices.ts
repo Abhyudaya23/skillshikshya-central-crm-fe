@@ -1,0 +1,74 @@
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useDataSource } from "@/context/data-source";
+import { apiErrorMessage } from "@/lib/api";
+import { invoicesService } from "@/services/invoices.service";
+import type { InvoiceEmailConfigPayload, InvoiceListParams } from "@/types/invoices";
+
+/** Flat invoice register — live backend only (invoices have no mock fixtures). */
+export function useInvoices(params: InvoiceListParams = {}) {
+  const { source } = useDataSource();
+  const enabled = source === "api";
+  const query = useQuery({
+    queryKey: ["invoices", "list", params],
+    enabled,
+    queryFn: () => invoicesService.list({ ordering: "-created_at", page_size: 50, ...params }),
+    placeholderData: keepPreviousData,
+  });
+  return {
+    invoices: query.data?.results ?? [],
+    count: query.data?.count ?? 0,
+    isLoading: enabled && query.isLoading,
+    isFetching: enabled && query.isFetching,
+  };
+}
+
+/** One student's invoice history. */
+export function useStudentInvoices(studentId?: number | null) {
+  const { source } = useDataSource();
+  const enabled = source === "api" && studentId != null;
+  const query = useQuery({
+    queryKey: ["invoices", "student", studentId],
+    enabled,
+    queryFn: () =>
+      invoicesService.byStudent(studentId as number, { ordering: "-created_at", page_size: 100 }),
+  });
+  return {
+    invoices: query.data?.results ?? [],
+    isLoading: enabled && query.isLoading,
+  };
+}
+
+/** Admin only — re-queue the invoice email. */
+export function useResendInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => invoicesService.resend(id),
+    onSuccess: (data) => {
+      toast.success(data.detail || "Invoice queued for re-send", { description: `To ${data.to}` });
+      void qc.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not re-send the invoice")),
+  });
+}
+
+/** Admin only — global invoice-email CC config. */
+export function useInvoiceEmailConfig(enabled = true) {
+  return useQuery({
+    queryKey: ["invoices", "email-config"],
+    enabled,
+    queryFn: () => invoicesService.emailConfig(),
+  });
+}
+
+export function useUpdateInvoiceEmailConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: InvoiceEmailConfigPayload) => invoicesService.updateEmailConfig(payload),
+    onSuccess: () => {
+      toast.success("Invoice email settings saved");
+      void qc.invalidateQueries({ queryKey: ["invoices", "email-config"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not save the email settings")),
+  });
+}

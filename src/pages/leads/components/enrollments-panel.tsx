@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, PencilLine, Plus, Receipt, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +13,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDeleteEnrollment,
@@ -22,7 +38,12 @@ import {
 } from "@/hooks/use-leads";
 import { formatDate, formatDateTime, formatNPR } from "@/lib/leads-format";
 import { cn } from "@/lib/utils";
-import type { ApiEnrollment, ApiEnrollmentStatus, ApiPaymentStatus } from "@/types/leads-api";
+import type {
+  ApiEnrollment,
+  ApiEnrollmentStatus,
+  ApiPayment,
+  ApiPaymentStatus,
+} from "@/types/leads-api";
 import { EnrollmentDialog, PaymentDialog } from "./enrollment-dialogs";
 
 /* ------------------------------------------------------------ status tones */
@@ -85,6 +106,7 @@ function EnrollmentPayments({
   const { payments, isLoading } = useEnrollmentPayments(leadId, enrollment.id);
   const deletePayment = useDeletePayment(leadId, enrollment.id);
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [editing, setEditing] = useState<ApiPayment | null>(null);
 
   if (isLoading) return <Skeleton className="h-16 w-full rounded-xl" />;
   if (!payments.length)
@@ -114,20 +136,40 @@ function EnrollmentPayments({
                 {p.status}
               </span>
               {canManage && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive size-8"
-                  title="Delete payment"
-                  onClick={() => setConfirmId(p.id)}
-                >
-                  <Trash2 />
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground size-8"
+                    title="Correct payment"
+                    onClick={() => setEditing(p)}
+                  >
+                    <PencilLine />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive size-8"
+                    title="Delete payment"
+                    onClick={() => setConfirmId(p.id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </>
               )}
             </div>
           </li>
         ))}
       </ul>
+
+      <PaymentDialog
+        key={editing?.id ?? "new"}
+        open={editing != null}
+        onClose={() => setEditing(null)}
+        leadId={leadId}
+        enrollmentApiId={enrollment.id}
+        payment={editing}
+      />
 
       <AlertDialog open={confirmId != null} onOpenChange={(o) => !o && setConfirmId(null)}>
         <AlertDialogContent>
@@ -376,8 +418,19 @@ export function EnrollmentsPanel({
 }
 
 /** Payments tab (live path) — every payment of the lead across its enrollments. */
-export function LeadPaymentsPanel({ leadId }: { leadId?: number }) {
+export function LeadPaymentsPanel({
+  leadId,
+  canManage,
+}: {
+  leadId?: number;
+  canManage?: boolean;
+}) {
   const { rows, isLoading } = useLeadPayments(leadId);
+  const { enrollments } = useLeadEnrollments(leadId);
+  const [payOpen, setPayOpen] = useState(false);
+  const [pickOpen, setPickOpen] = useState(false);
+  const [targetEnrollment, setTargetEnrollment] = useState<ApiEnrollment | null>(null);
+  const [editing, setEditing] = useState<{ payment: ApiPayment; enrollmentId: number } | null>(null);
 
   if (isLoading) return <Skeleton className="h-32 w-full rounded-2xl" />;
   if (!rows.length)
@@ -387,6 +440,20 @@ export function LeadPaymentsPanel({ leadId }: { leadId?: number }) {
     .filter((r) => r.payment.status === "successful")
     .reduce((s, r) => s + Number(r.payment.amount), 0);
 
+  function startRecord() {
+    if (!leadId) return;
+    if (enrollments.length === 0) {
+      toast.error("Create an enrollment first — payments are recorded against one.");
+      return;
+    }
+    if (enrollments.length === 1) {
+      setTargetEnrollment(enrollments[0]);
+      setPayOpen(true);
+      return;
+    }
+    setPickOpen(true);
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -394,7 +461,14 @@ export function LeadPaymentsPanel({ leadId }: { leadId?: number }) {
           {rows.length} payment{rows.length > 1 ? "s" : ""} across {new Set(rows.map((r) => r.enrollment?.id)).size}{" "}
           enrollment{new Set(rows.map((r) => r.enrollment?.id)).size > 1 ? "s" : ""}
         </p>
-        <p className="text-sm font-semibold">{formatNPR(collected)} collected</p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-semibold">{formatNPR(collected)} collected</p>
+          {canManage && (
+            <Button size="sm" variant="outline" onClick={startRecord}>
+              <Receipt /> Record Payment
+            </Button>
+          )}
+        </div>
       </div>
       <ul className="divide-border divide-y">
         {rows.map(({ payment: p, enrollment: e }) => (
@@ -412,17 +486,96 @@ export function LeadPaymentsPanel({ leadId }: { leadId?: number }) {
                 {p.received_by_name ? ` · by ${p.received_by_name}` : ""}
               </p>
             </div>
-            <span
-              className={cn(
-                "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                PAYMENT_TONE[p.status] ?? "bg-muted text-muted-foreground",
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                  PAYMENT_TONE[p.status] ?? "bg-muted text-muted-foreground",
+                )}
+              >
+                {p.status}
+              </span>
+              {canManage && e && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground size-8"
+                  title="Correct payment"
+                  onClick={() => setEditing({ payment: p, enrollmentId: e.id })}
+                >
+                  <PencilLine />
+                </Button>
               )}
-            >
-              {p.status}
-            </span>
+            </div>
           </li>
         ))}
       </ul>
+
+      {editing && (
+        <PaymentDialog
+          key={editing.payment.id}
+          open
+          onClose={() => setEditing(null)}
+          leadId={leadId}
+          enrollmentApiId={editing.enrollmentId}
+          payment={editing.payment}
+        />
+      )}
+
+      <Dialog open={pickOpen} onOpenChange={(o) => !o && setPickOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose enrollment</DialogTitle>
+            <DialogDescription>Payments are recorded against a specific enrollment.</DialogDescription>
+          </DialogHeader>
+          <Select
+            value={targetEnrollment != null ? String(targetEnrollment.id) : undefined}
+            onValueChange={(v) =>
+              setTargetEnrollment(enrollments.find((e) => e.id === Number(v)) ?? null)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select enrollment" />
+            </SelectTrigger>
+            <SelectContent>
+              {enrollments.map((e) => (
+                <SelectItem key={e.id} value={String(e.id)}>
+                  {e.course_name ?? "Course"}
+                  {e.batch_name ? ` — ${e.batch_name}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPickOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="brand"
+              disabled={targetEnrollment == null}
+              onClick={() => {
+                setPickOpen(false);
+                setPayOpen(true);
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {targetEnrollment && (
+        <PaymentDialog
+          key={targetEnrollment.id}
+          open={payOpen}
+          onClose={() => {
+            setPayOpen(false);
+            setTargetEnrollment(null);
+          }}
+          leadId={leadId}
+          enrollmentApiId={targetEnrollment.id}
+        />
+      )}
     </div>
   );
 }

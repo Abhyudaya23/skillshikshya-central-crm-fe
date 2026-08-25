@@ -1,4 +1,7 @@
+import { Coins } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -10,7 +13,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMyCallMinutes } from "@/hooks/use-call-minutes";
+import { useRole } from "@/context/role";
 import type { CallMinutesTransaction } from "@/types/call-minutes";
+import { CallMinutesDialog } from "@/pages/users/call-minutes-dialog";
 
 const TYPE_LABELS: Record<CallMinutesTransaction["type"], string> = {
   topup: "Top-up",
@@ -28,17 +33,26 @@ function formatDateTime(iso: string) {
 /** Signed-in user's call-minutes balance + last 10 ledger rows. */
 export default function CallMinutesPage() {
   const { data, isLoading } = useMyCallMinutes();
+  const { can } = useRole();
+  const [topUpOpen, setTopUpOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-brand font-mono text-[11px] font-bold tracking-wider uppercase">
-          My resources
-        </p>
-        <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">Call Minutes</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Every logged call deducts minutes from your balance. Admins top balances up.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-brand font-mono text-[11px] font-bold tracking-wider uppercase">
+            My resources
+          </p>
+          <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">Call Minutes</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Every logged call deducts minutes from your balance. Admins top balances up.
+          </p>
+        </div>
+        {can("users.manage") && (
+          <Button variant="brand" onClick={() => setTopUpOpen(true)}>
+            <Coins /> Top up minutes
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
@@ -121,10 +135,12 @@ export default function CallMinutesPage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </CardContent>
+          </Table>
+        </CardContent>
         </Card>
       </div>
+
+      <CallMinutesDialog user={null} allowUserPick open={topUpOpen} onOpenChange={setTopUpOpen} />
     </div>
   );
 }

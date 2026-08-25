@@ -1,7 +1,8 @@
-import { GraduationCap, Search } from "lucide-react";
+import { GraduationCap, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,9 +14,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDataSource } from "@/context/data-source";
+import { useRole } from "@/context/role";
 import { useEnrollments } from "@/hooks/use-billing";
 import { formatDate, formatNPR } from "@/lib/leads-format";
 import { cn } from "@/lib/utils";
+import { EnrollmentDialog } from "@/pages/leads/components/enrollment-dialogs";
 
 const STATUS_TONE: Record<string, string> = {
   active: "bg-brand-fixed-dim/20 text-brand-container",
@@ -29,10 +32,12 @@ const STATUS_TONE: Record<string, string> = {
 
 export default function EnrollmentsPage() {
   const navigate = useNavigate();
-  const { isMock } = useDataSource();
+  const { isMock, source } = useDataSource();
+  const { can } = useRole();
   const { rows, isLoading } = useEnrollments();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const statuses = useMemo(
     () => [...new Set(rows.map((r) => r.status))].sort(),
@@ -81,6 +86,11 @@ export default function EnrollmentsPage() {
             ))}
           </SelectContent>
         </Select>
+        {source === "api" && can("enrollment.manage") && (
+          <Button variant="brand" onClick={() => setCreateOpen(true)}>
+            <Plus /> New Enrollment
+          </Button>
+        )}
       </div>
 
       <div className="bg-card overflow-hidden rounded-2xl border shadow-[0_1px_3px_0_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)]">
@@ -151,6 +161,12 @@ export default function EnrollmentsPage() {
           </Table>
         </div>
       </div>
+
+      <EnrollmentDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        allowLeadPick
+      />
     </div>
   );
 }

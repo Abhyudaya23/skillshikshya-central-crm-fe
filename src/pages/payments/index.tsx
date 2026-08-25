@@ -1,7 +1,8 @@
-import { CreditCard, Search } from "lucide-react";
+import { CreditCard, PencilLine, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,9 +14,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDataSource } from "@/context/data-source";
+import { useRole } from "@/context/role";
 import { usePayments } from "@/hooks/use-billing";
 import { formatDateTime, formatNPR } from "@/lib/leads-format";
 import { cn } from "@/lib/utils";
+import { EditPaymentDialog, PaymentDialog } from "@/pages/leads/components/enrollment-dialogs";
 
 const STATUS_TONE: Record<string, string> = {
   successful: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
@@ -27,11 +30,17 @@ const STATUS_TONE: Record<string, string> = {
 
 export default function PaymentsPage() {
   const navigate = useNavigate();
-  const { isMock } = useDataSource();
+  const { isMock, source } = useDataSource();
+  const { can } = useRole();
   const { rows, isLoading } = usePayments();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [method, setMethod] = useState("all");
+  const [payOpen, setPayOpen] = useState(false);
+  const [editing, setEditing] = useState<{ leadId: number; enrollmentId: number; id: number } | null>(
+    null,
+  );
+  const canEdit = source === "api" && can("payment.manage");
 
   const statuses = useMemo(() => [...new Set(rows.map((r) => r.status))].sort(), [rows]);
   const methods = useMemo(() => [...new Set(rows.map((r) => r.method))].sort(), [rows]);
@@ -99,9 +108,16 @@ export default function PaymentsPage() {
             ))}
           </SelectContent>
         </Select>
-        <div className="ml-auto text-right">
-          <p className="text-muted-foreground text-xs">Successful (this view)</p>
-          <p className="font-headline text-lg font-semibold tabular-nums">{formatNPR(total)}</p>
+        <div className="ml-auto flex items-center gap-3 text-right">
+          <div>
+            <p className="text-muted-foreground text-xs">Successful (this view)</p>
+            <p className="font-headline text-lg font-semibold tabular-nums">{formatNPR(total)}</p>
+          </div>
+          {source === "api" && can("enrollment.manage") && (
+            <Button variant="brand" onClick={() => setPayOpen(true)}>
+              <CreditCard /> Record Payment
+            </Button>
+          )}
         </div>
       </div>
 
@@ -118,20 +134,21 @@ export default function PaymentsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Received by</TableHead>
                 <TableHead>Date</TableHead>
+                {canEdit && <TableHead className="w-12" />}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={canEdit ? 9 : 8}>
                       <Skeleton className="h-6 w-full" />
                     </TableCell>
                   </TableRow>
                 ))}
               {!isLoading && filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-14 text-center">
+                  <TableCell colSpan={canEdit ? 9 : 8} className="py-14 text-center">
                     <CreditCard className="text-muted-foreground mx-auto size-8 opacity-40" />
                     <p className="text-muted-foreground mt-2 text-sm">No payments found.</p>
                   </TableCell>
@@ -160,12 +177,43 @@ export default function PaymentsPage() {
                   <TableCell className="text-muted-foreground whitespace-nowrap">
                     {formatDateTime(p.paidAt)}
                   </TableCell>
+                  {canEdit && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {p.leadId && p.enrollmentId && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground size-8"
+                          title="Correct payment"
+                          onClick={() =>
+                            setEditing({
+                              leadId: Number(p.leadId),
+                              enrollmentId: Number(p.enrollmentId),
+                              id: Number(p.id),
+                            })
+                          }
+                        >
+                          <PencilLine />
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       </div>
+
+      <PaymentDialog open={payOpen} onClose={() => setPayOpen(false)} allowLeadPick />
+
+      <EditPaymentDialog
+        open={editing != null}
+        onClose={() => setEditing(null)}
+        leadId={editing?.leadId}
+        enrollmentId={editing?.enrollmentId}
+        paymentId={editing?.id}
+      />
     </div>
   );
 }

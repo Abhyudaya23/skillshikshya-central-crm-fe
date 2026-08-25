@@ -459,6 +459,17 @@ export interface ApiBranchPayload {
 export type ApiStudentStatus = "active" | "inactive" | "graduated" | "dropped" | "transferred";
 export type ApiGender = "male" | "female" | "other";
 
+/** One of the last 5 payments returned on the student detail response. */
+export interface ApiStudentRecentPayment {
+  amount: string;
+  payment_date: string;
+  payment_method: ApiPaymentMethod;
+  status: ApiPaymentStatus;
+  /** Course display name, not an id. */
+  course: string | null;
+  transaction_reference: string | null;
+}
+
 export interface ApiStudent {
   id: number;
   student_id: string;
@@ -493,7 +504,14 @@ export interface ApiStudent {
   branch_name?: string;
   assigned_counselor_name?: string;
   created_by_name?: string;
+  updated_by_name?: string | null;
   document_count?: number;
+
+  /* Payment summary — detail response only (GET /api/students/{id}/). */
+  /** Sum of successful payments across every enrollment. */
+  total_paid?: string;
+  enrollment_count?: number;
+  recent_payments?: ApiStudentRecentPayment[];
 }
 
 export interface ApiStudentPayload {
@@ -519,6 +537,69 @@ export interface ApiStudentPayload {
   status?: ApiStudentStatus;
   photo_url?: string | null;
   notes?: string | null;
+}
+
+/** File attached to a student profile — `/api/students/{id}/documents/`. */
+export interface ApiStudentDocument {
+  id: number;
+  student?: number;
+  document_type: string;
+  /** Uploaded file URL (see upload_api_guide.md). */
+  file: string;
+  created_at?: string;
+}
+
+/* -------------------------------------------------------------- attendance */
+
+export type ApiAttendanceStatus = "present" | "absent";
+
+export interface ApiAttendance {
+  id: number;
+  student: number;
+  student_name?: string;
+  course: number | null;
+  course_name?: string | null;
+  date: string;
+  status: ApiAttendanceStatus;
+  remarks: string | null;
+  marked_by_name?: string;
+}
+
+export interface ApiAttendancePayload {
+  date?: string;
+  status?: ApiAttendanceStatus;
+  course?: number | null;
+  remarks?: string | null;
+}
+
+export interface AttendanceListParams {
+  status?: ApiAttendanceStatus;
+  course?: number;
+  date__gte?: string;
+  date__lte?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface ApiAttendanceMonth {
+  /** `YYYY-MM`. */
+  month: string;
+  present: number;
+  absent: number;
+  total: number;
+  percentage: number;
+}
+
+/** GET /api/students/{id}/attendance_profile/ — stats + streaks. */
+export interface ApiAttendanceProfile {
+  current_streak: number;
+  longest_streak: number;
+  attendance_percentage: number;
+  total_classes: number;
+  present_count: number;
+  absent_count: number;
+  monthly_breakdown: ApiAttendanceMonth[];
+  recent_records: ApiAttendance[];
 }
 
 /* ------------------------------------------------------------------ upload */

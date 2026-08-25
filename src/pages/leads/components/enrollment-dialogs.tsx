@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +22,20 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCourses } from "@/hooks/use-courses";
 import { useCourseBatches } from "@/hooks/use-batches";
-import { useAddEnrollment, useAddPayment, useUpdateEnrollment } from "@/hooks/use-leads";
+import { useLeadOptions } from "@/hooks/use-lead-options";
+import {
+  useAddEnrollment,
+  useAddPayment,
+  usePayment,
+  useUpdateEnrollment,
+  useUpdatePayment,
+  useLeadEnrollments,
+} from "@/hooks/use-leads";
 import type {
   ApiEnrollment,
   ApiEnrollmentPayload,
   ApiEnrollmentStatus,
+  ApiPayment,
   ApiPaymentMethod,
   ApiPaymentPayload,
   ApiPaymentStatus,
@@ -53,6 +64,7 @@ export function EnrollmentDialog({
   leadId,
   primaryCourseId,
   enrollment,
+  allowLeadPick = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -60,10 +72,17 @@ export function EnrollmentDialog({
   primaryCourseId?: number | null;
   /** Pass an existing enrollment to edit it (PATCH) instead of creating one. */
   enrollment?: ApiEnrollment | null;
+  /** Show an inline Lead picker (global create flow) when no `leadId` is preset. */
+  allowLeadPick?: boolean;
 }) {
   const [f, setF] = useState<ApiEnrollmentPayload>({});
   const isEdit = !!enrollment;
+  const needsLead = allowLeadPick && !isEdit;
+  const [pickedLeadId, setPickedLeadId] = useState<string>("");
+  const [leadSearch, setLeadSearch] = useState("");
+  const effectiveLeadId = leadId ?? (pickedLeadId ? Number(pickedLeadId) : undefined);
 
+  const leadOptionsQ = useLeadOptions(open && needsLead ? leadSearch : "");
   const coursesQ = useCourses(1, 100, "");
   const courses = useMemo(() => coursesQ.data?.results ?? [], [coursesQ.data]);
   const batchesQ = useCourseBatches(
@@ -71,12 +90,14 @@ export function EnrollmentDialog({
     !!f.course,
   );
   const batches = useMemo(() => batchesQ.data?.results ?? [], [batchesQ.data]);
-  const addEnrollment = useAddEnrollment(leadId);
+  const addEnrollment = useAddEnrollment(effectiveLeadId);
   const updateEnrollment = useUpdateEnrollment(leadId);
   const saving = addEnrollment.isPending || updateEnrollment.isPending;
 
   useEffect(() => {
     if (!open) return;
+    setPickedLeadId("");
+    setLeadSearch("");
     if (enrollment) {
       setF({
         course: enrollment.course,
@@ -112,6 +133,10 @@ export function EnrollmentDialog({
   const agreedAuto = num(num(f.listed_fee ?? "0", f.standard_discount ?? "0"), f.additional_discount ?? "0");
 
   function submit() {
+    if (needsLead && !effectiveLeadId) {
+      toast.error("Pick a lead first.");
+      return;
+    }
     if (!f.course) return;
     const payload = { ...f, agreed_amount: f.agreed_amount || agreedAuto };
     if (enrollment) {
@@ -126,9 +151,24 @@ export function EnrollmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit enrollment" : "Create enrollment"}</DialogTitle>
-          <DialogDescription>Record the course, batch, and agreed fee.</DialogDescription>
+          <DialogDescription>Record the lead, course, batch, and agreed fee.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
+          {needsLead && (
+            <div className="grid gap-2 sm:col-span-2">
+              <Label required>Lead</Label>
+              <Combobox
+                value={pickedLeadId}
+                onChange={setPickedLeadId}
+                onSearchChange={setLeadSearch}
+                options={leadOptionsQ.options}
+                loading={leadOptionsQ.isLoading && !!leadSearch}
+                placeholder="Search leads by name or phone…"
+                searchPlaceholder="Type to search…"
+                emptyText="No leads match."
+              />
+            </div>
+          )}
           <div className="grid gap-2 sm:col-span-2">
             <Label required>Course</Label>
             <Select
@@ -240,16 +280,51 @@ export function PaymentDialog({
   onClose,
   leadId,
   enrollmentApiId,
+  payment,
+  allowLeadPick = false,
 }: {
   open: boolean;
   onClose: () => void;
   leadId?: number;
   enrollmentApiId?: number;
+  /** Pass an existing payment to correct it (PATCH) instead of recording a new one. */
+  payment?: ApiPayment | null;
+  /** Inline Lead + Enrollment pickers (global flow) when not preset from context. */
+  allowLeadPick?: boolean;
 }) {
-  const addPayment = useAddPayment(leadId, enrollmentApiId);
   const [f, setF] = useState<ApiPaymentPayload>({});
+  const isEdit = !!payment;
+  const needsPickers = allowLeadPick && !isEdit;
+  const [pickedLeadId, setPickedLeadId] = useState("");
+  const [pickedEnrollmentId, setPickedEnrollmentId] = useState("");
+  const [leadSearch, setLeadSearch] = useState("");
+  const effectiveLeadId = leadId ?? (pickedLeadId ? Number(pickedLeadId) : undefined);
+  const effectiveEnrollmentId =
+    enrollmentApiId ?? (pickedEnrollmentId ? Number(pickedEnrollmentId) : undefined);
+
+  const leadOptionsQ = useLeadOptions(open && needsPickers ? leadSearch : "");
+  const enrollmentsQ = useLeadEnrollments(needsPickers ? effectiveLeadId : undefined);
+  const enrollments = enrollmentsQ.enrollments;
+  const addPayment = useAddPayment(effectiveLeadId, effectiveEnrollmentId);
+  const updatePayment = useUpdatePayment(effectiveLeadId, effectiveEnrollmentId);
+  const saving = addPayment.isPending || updatePayment.isPending;
+
   useEffect(() => {
     if (!open) return;
+    setPickedLeadId("");
+    setPickedEnrollmentId("");
+    setLeadSearch("");
+    if (payment) {
+      setF({
+        amount: payment.amount,
+        payment_date: payment.payment_date,
+        payment_method: payment.payment_method,
+        status: payment.status,
+        transaction_reference: payment.transaction_reference ?? "",
+        notes: payment.notes ?? "",
+      });
+      return;
+    }
     setF({
       amount: "",
       payment_date: new Date().toISOString(),
@@ -258,13 +333,27 @@ export function PaymentDialog({
       transaction_reference: "",
       notes: "",
     });
-  }, [open]);
+  }, [open, payment]);
+
+  // Pre-select when the chosen lead has exactly one enrollment.
+  useEffect(() => {
+    if (!needsPickers || pickedEnrollmentId) return;
+    if (enrollments.length === 1) setPickedEnrollmentId(String(enrollments[0].id));
+  }, [needsPickers, enrollments, pickedEnrollmentId]);
 
   const set = <K extends keyof ApiPaymentPayload>(k: K, v: ApiPaymentPayload[K]) =>
     setF((p) => ({ ...p, [k]: v }));
 
   function submit() {
+    if (needsPickers && (!effectiveLeadId || !effectiveEnrollmentId)) {
+      toast.error("Pick a lead and its enrollment first.");
+      return;
+    }
     if (!f.amount) return;
+    if (payment) {
+      updatePayment.mutate({ id: payment.id, payload: f }, { onSuccess: () => onClose() });
+      return;
+    }
     addPayment.mutate(f, { onSuccess: () => onClose() });
   }
 
@@ -272,10 +361,67 @@ export function PaymentDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record payment</DialogTitle>
-          <DialogDescription>Totals recalculate from successful payments.</DialogDescription>
+          <DialogTitle>{isEdit ? "Correct payment" : "Record payment"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Marking a pending payment successful issues its receipt now. Editing an already-successful payment does not reissue one."
+              : "Totals recalculate from successful payments."}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
+          {needsPickers && (
+            <>
+              <div className="grid gap-2 sm:col-span-2">
+                <Label required>Lead</Label>
+                <Combobox
+                  value={pickedLeadId}
+                  onChange={(v) => {
+                    setPickedLeadId(v);
+                    setPickedEnrollmentId("");
+                  }}
+                  onSearchChange={setLeadSearch}
+                  options={leadOptionsQ.options}
+                  loading={leadOptionsQ.isLoading && !!leadSearch}
+                  placeholder="Search leads by name or phone…"
+                  searchPlaceholder="Type to search…"
+                  emptyText="No leads match."
+                />
+              </div>
+              <div className="grid gap-2 sm:col-span-2">
+                <Label required>Enrollment</Label>
+                <Select
+                  value={pickedEnrollmentId || undefined}
+                  onValueChange={setPickedEnrollmentId}
+                  disabled={!effectiveLeadId || enrollmentsQ.isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !effectiveLeadId
+                          ? "Pick a lead first"
+                          : enrollmentsQ.isLoading
+                            ? "Loading enrollments…"
+                            : "Select enrollment"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enrollments.map((e) => (
+                      <SelectItem key={e.id} value={String(e.id)}>
+                        {e.course_name ?? "Course"}
+                        {e.batch_name ? ` — ${e.batch_name}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {effectiveLeadId && !enrollmentsQ.isLoading && enrollments.length === 0 && (
+                  <p className="text-destructive text-xs">
+                    This lead has no enrollments — create one first.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
           <div className="grid gap-2">
             <Label required>Amount</Label>
             <Input type="number" value={f.amount ?? ""} onChange={(e) => set("amount", e.target.value)} />
@@ -331,11 +477,46 @@ export function PaymentDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="brand" onClick={submit} disabled={addPayment.isPending}>
-            {addPayment.isPending ? "Saving…" : "Record Payment"}
+          <Button variant="brand" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Save Changes" : "Record Payment"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Correct a payment when only its ids are known (the flat `/api/payments/`
+ * register). Fetches the full record first so `notes` survives the PATCH.
+ */
+export function EditPaymentDialog({
+  open,
+  onClose,
+  leadId,
+  enrollmentId,
+  paymentId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  leadId?: number;
+  enrollmentId?: number;
+  paymentId?: number;
+}) {
+  const { payment } = usePayment(
+    open ? leadId : undefined,
+    open ? enrollmentId : undefined,
+    open ? paymentId : undefined,
+  );
+  if (!open || !payment) return null;
+  return (
+    <PaymentDialog
+      key={payment.id}
+      open
+      onClose={onClose}
+      leadId={leadId}
+      enrollmentApiId={enrollmentId}
+      payment={payment}
+    />
   );
 }

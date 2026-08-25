@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -386,6 +387,11 @@ export default function LeadDetailPage() {
                 <GraduationCap /> Convert
               </Button>
             )}
+            {source === "api" && lead.isConverted && (
+              <Badge variant="brand" className="gap-1">
+                <GraduationCap className="size-3.5" /> Already a student
+              </Badge>
+            )}
             {can("leads.edit") && (
               <Button variant="brand" onClick={() => navigate(`/leads/${lead.id}/edit`)}>
                 <PencilLine /> Edit
@@ -611,6 +617,16 @@ export default function LeadDetailPage() {
 
             {/* Follow-ups */}
             <TabsContent value="followups">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-muted-foreground text-sm">
+                  {lead.followUps.length} follow-up{lead.followUps.length === 1 ? "" : "s"}
+                </p>
+                {can("leads.log_activity") && (
+                  <Button size="sm" variant="outline" onClick={() => setAction("follow_up")}>
+                    <CalendarPlus /> Add Follow-up
+                  </Button>
+                )}
+              </div>
               {lead.followUps.length > 0 ? (
                 <ul className="divide-border divide-y">
                   {lead.followUps.map((f) => (
@@ -702,7 +718,7 @@ export default function LeadDetailPage() {
             {/* Payments */}
             <TabsContent value="payments">
               {source === "api" ? (
-                <LeadPaymentsPanel leadId={lead.apiId} />
+                <LeadPaymentsPanel leadId={lead.apiId} canManage={can("enrollment.manage")} />
               ) : lead.payments.length > 0 ? (
                 <ul className="divide-border divide-y">
                   {lead.payments.map((p) => (

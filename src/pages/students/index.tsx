@@ -1,5 +1,6 @@
-import { GraduationCap, Plus, Search } from "lucide-react";
+import { Download, GraduationCap, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,8 +14,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDataSource } from "@/context/data-source";
 import { useStudents } from "@/hooks/use-students";
+import { apiErrorMessage } from "@/lib/api";
 import { formatDate, initialsOf } from "@/lib/leads-format";
+import { studentsService } from "@/services/students.service";
 import type { ApiStudentStatus } from "@/types/leads-api";
+import { StudentDetailSheet } from "./student-detail-sheet";
 import { StudentFormDialog } from "./student-form-dialog";
 
 const STATUS_TONE: Record<ApiStudentStatus, string> = {
@@ -41,6 +45,8 @@ export default function StudentsPage() {
   const [debounced, setDebounced] = useState("");
   const [status, setStatus] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 300);
@@ -60,6 +66,22 @@ export default function StudentsPage() {
   const { data, isLoading } = useStudents(params);
   const rows = isApi ? data?.results ?? [] : [];
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      // Export honours the active filters (same query params as the list).
+      await studentsService.exportCsv({
+        search: params.search,
+        status: params.status,
+        ordering: "-created_at",
+      });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Export failed"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -72,9 +94,14 @@ export default function StudentsPage() {
           </p>
         </div>
         {isApi && (
-          <Button variant="brand" onClick={() => setFormOpen(true)}>
-            <Plus /> New Student
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              <Download /> {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+            <Button variant="brand" onClick={() => setFormOpen(true)}>
+              <Plus /> New Student
+            </Button>
+          </div>
         )}
       </div>
 
@@ -137,7 +164,7 @@ export default function StudentsPage() {
                 </TableRow>
               )}
               {rows.map((s) => (
-                <TableRow key={s.id}>
+                <TableRow key={s.id} className="cursor-pointer" onClick={() => setDetailId(s.id)}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <span className="bg-brand-fixed-dim/30 text-brand-container flex size-9 items-center justify-center rounded-full text-xs font-bold">
@@ -168,6 +195,8 @@ export default function StudentsPage() {
       )}
 
       <StudentFormDialog open={formOpen} onClose={() => setFormOpen(false)} />
+
+      <StudentDetailSheet studentId={detailId} onClose={() => setDetailId(null)} />
     </div>
   );
 }

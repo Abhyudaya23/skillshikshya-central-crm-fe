@@ -1,4 +1,4 @@
-import { CalendarClock, Check, Search } from "lucide-react";
+import { CalendarClock, Check, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { type FollowUpRow, useCompleteFollowup, useFollowUps } from "@/hooks/use
 import { useRole } from "@/context/role";
 import { formatDateTime, formatPhone, initialsOf, relativeToToday } from "@/lib/leads-format";
 import { cn } from "@/lib/utils";
+import { ScheduleFollowUpDialog } from "./schedule-follow-up-dialog";
 
 const BUCKETS = [
   { key: "overdue", label: "Overdue", tone: "text-destructive" },
@@ -69,6 +70,7 @@ export default function FollowUpsPage() {
   const { rows, isLoading } = useFollowUps();
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"all" | "overdue" | "today" | "upcoming">("all");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -102,14 +104,21 @@ export default function FollowUpsPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-          <TabsList>
-            <TabsTrigger value="all">All ({filtered.length})</TabsTrigger>
-            <TabsTrigger value="overdue">Overdue ({grouped.overdue.length})</TabsTrigger>
-            <TabsTrigger value="today">Today ({grouped.today.length})</TabsTrigger>
-            <TabsTrigger value="upcoming">Upcoming ({grouped.upcoming.length})</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+            <TabsList>
+              <TabsTrigger value="all">All ({filtered.length})</TabsTrigger>
+              <TabsTrigger value="overdue">Overdue ({grouped.overdue.length})</TabsTrigger>
+              <TabsTrigger value="today">Today ({grouped.today.length})</TabsTrigger>
+              <TabsTrigger value="upcoming">Upcoming ({grouped.upcoming.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {!isMock && canComplete && (
+            <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
+              <Plus /> Add Follow-up
+            </Button>
+          )}
+        </div>
         <div className="relative max-w-sm min-w-[14rem] flex-1">
           <Search className="text-muted-foreground absolute top-2.5 left-3 size-4" />
           <Input
@@ -158,6 +167,12 @@ export default function FollowUpsPage() {
           })}
         </div>
       )}
+
+      <ScheduleFollowUpDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        allowLeadPick
+      />
     </div>
   );
 }

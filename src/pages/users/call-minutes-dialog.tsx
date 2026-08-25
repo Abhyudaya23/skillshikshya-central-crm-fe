@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Coins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAddCallMinutes, useCallMinutesTransactions } from "@/hooks/use-call-minutes";
+import { useUsers } from "@/hooks/use-users";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import type { CallMinutesTransactionType } from "@/types/call-minutes";
 import type { User } from "@/types";
 
@@ -50,23 +53,42 @@ function formatDateTime(iso: string) {
 /**
  * Admin dialog: view a user's call-minutes balance + ledger and top it up.
  * Backend: /api/users/{id}/call-minutes/* (admin only).
+ *
+ * With `allowUserPick` and no preset `user`, a user search combobox is shown
+ * first so admins can top up anyone (e.g. from the global call-minutes page).
  */
 export function CallMinutesDialog({
   user,
   open,
   onOpenChange,
+  allowUserPick = false,
 }: {
   user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Show a user picker when no preset `user` is passed (admin global flow). */
+  allowUserPick?: boolean;
 }) {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<CallMinutesTransactionType | "all">("all");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [pickedUserId, setPickedUserId] = useState("");
+
+  const needsPick = allowUserPick && user == null;
+  const debouncedUserSearch = useDebouncedValue(userSearch, 300);
+  const usersQ = useUsers(1, 20, needsPick ? debouncedUserSearch : "");
+
+  // Effective target: the preset user, or the one chosen via the picker.
+  const target = useMemo(() => {
+    if (user) return user;
+    if (!needsPick) return null;
+    return usersQ.data?.results.find((u) => String(u.id) === pickedUserId) ?? null;
+  }, [user, needsPick, usersQ.data, pickedUserId]);
 
   const ledger = useCallMinutesTransactions(
-    open && user ? user.id : null,
+    open && target ? target.id : null,
     page,
     typeFilter === "all" ? undefined : typeFilter,
   );
@@ -79,11 +101,11 @@ export function CallMinutesDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
+    if (!target) return;
     const parsed = Number.parseInt(amount, 10);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
     addMinutes.mutate(
-      { userId: user.id, payload: { amount: parsed, note: note.trim() || undefined } },
+      { userId: target.id, payload: { amount: parsed, note: note.trim() || undefined } },
       { onSuccess: () => resetForm() },
     );
   }
@@ -93,7 +115,7 @@ export function CallMinutesDialog({
 
   // Balance shown from the user serializer; stays fresh because top-ups
   // invalidate the ["users"] query (the parent re-renders with new data).
-  const balance = user?.call_minutes_balance;
+  const balance = target?.call_minutes_balance;
 
   return (
     <Dialog
@@ -103,6 +125,8 @@ export function CallMinutesDialog({
           setPage(1);
           setTypeFilter("all");
           resetForm();
+          setUserSearch("");
+          setPickedUserId("");
         }
         onOpenChange(o);
       }}
@@ -110,13 +134,33 @@ export function CallMinutesDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Coins className="text-brand size-5" /> Call minutes — {user?.name}
+            <Coins className="text-brand size-5" /> Call minutes{target ? ` — ${target.name}` : ""}
           </DialogTitle>
           <DialogDescription>
-            Top up minutes for {user?.email}. Minutes are deducted automatically as counselors log
-            calls.
+            {target
+              ? `Top up minutes for ${target.email}. Minutes are deducted automatically as counselors log calls.`
+              : "Pick a user to view their balance and top it up."}
           </DialogDescription>
         </DialogHeader>
+
+        {needsPick && (
+          <div className="grid gap-2">
+            <Label required>User</Label>
+            <Combobox
+              value={pickedUserId}
+              onChange={setPickedUserId}
+              onSearchChange={setUserSearch}
+              options={(usersQ.data?.results ?? []).map((u) => ({
+                value: String(u.id),
+                label: [u.name, u.email].filter(Boolean).join(" · "),
+              }))}
+              loading={usersQ.isFetching && !!userSearch}
+              placeholder="Search users by name or email…"
+              searchPlaceholder="Type to search…"
+              emptyText="No users match."
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-between rounded-xl border px-4 py-3">
           <div>
@@ -154,7 +198,7 @@ export function CallMinutesDialog({
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
-          <Button type="submit" variant="brand" disabled={addMinutes.isPending}>
+          <Button type="submit" variant="brand" disabled={!target || addMinutes.isPending}>
             {addMinutes.isPending ? "Adding…" : "Add minutes"}
           </Button>
         </form>

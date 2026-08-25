@@ -10,6 +10,7 @@ import CoursesPage from "@/pages/courses";
 import DashboardPage from "@/pages/dashboard";
 import EnrollmentsPage from "@/pages/enrollments";
 import FollowUpsPage from "@/pages/follow-ups";
+import InvoicesPage from "@/pages/invoices";
 import LeadsPage from "@/pages/leads";
 import PaymentsPage from "@/pages/payments";
 import LeadDetailPage from "@/pages/leads/lead-detail";
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/follow-ups" element={<FollowUpsPage />} />
           <Route path="/enrollments" element={<EnrollmentsPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/invoices" element={<InvoicesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
 

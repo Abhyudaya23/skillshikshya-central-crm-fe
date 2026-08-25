@@ -151,6 +151,23 @@ export const leadsService = {
     );
     return data;
   },
+  /**
+   * Correct a recorded payment (amount, method, reference, status…).
+   * Flipping a `pending` payment to `successful` issues its receipt at that moment;
+   * editing an already-successful payment does not regenerate the issued receipt.
+   */
+  async updatePayment(
+    leadId: number,
+    enrollmentId: number,
+    id: number,
+    payload: ApiPaymentPayload,
+  ) {
+    const { data } = await api.patch<ApiPayment>(
+      `/leads/${leadId}/enrollments/${enrollmentId}/payments/${id}/`,
+      payload,
+    );
+    return data;
+  },
   async deletePayment(leadId: number, enrollmentId: number, id: number) {
     await api.delete(`/leads/${leadId}/enrollments/${enrollmentId}/payments/${id}/`);
   },

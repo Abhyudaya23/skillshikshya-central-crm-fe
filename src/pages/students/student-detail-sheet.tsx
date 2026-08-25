@@ -1,0 +1,455 @@
+import { CalendarCheck, ExternalLink, FileText, Send, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/auth";
+import { useCourses } from "@/hooks/use-courses";
+import { useResendInvoice, useStudentInvoices } from "@/hooks/use-invoices";
+import {
+  useAttendanceProfile,
+  useDeleteAttendance,
+  useMarkAttendance,
+  useStudent,
+  useStudentAttendance,
+  useStudentDocuments,
+} from "@/hooks/use-students";
+import { formatDate, formatDateTime, formatNPR } from "@/lib/leads-format";
+import { cn } from "@/lib/utils";
+import type { ApiAttendanceStatus, ApiStudentStatus } from "@/types/leads-api";
+
+const STATUS_TONE: Record<ApiStudentStatus, string> = {
+  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  inactive: "bg-muted text-muted-foreground",
+  graduated: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  dropped: "bg-destructive/10 text-destructive",
+  transferred: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+};
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-surface-container-low rounded-xl border p-3">
+      <p className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider uppercase">
+        {label}
+      </p>
+      <p className="font-headline mt-1 text-xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className="text-sm">{value || "—"}</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ tabs */
+
+function InvoicesTab({ studentId }: { studentId: number }) {
+  const { invoices, isLoading } = useStudentInvoices(studentId);
+  const { user } = useAuth();
+  const resend = useResendInvoice();
+
+  if (isLoading) return <Skeleton className="h-24 w-full rounded-xl" />;
+  if (!invoices.length)
+    return (
+      <p className="text-muted-foreground py-8 text-center text-sm">
+        No invoices yet — they are generated on enrollment and on each successful payment.
+      </p>
+    );
+
+  return (
+    <ul className="divide-border divide-y">
+      {invoices.map((i) => (
+        <li key={i.id} className="flex items-center justify-between gap-3 py-3">
+          <div className="min-w-0">
+            <p className="font-mono text-xs font-semibold">{i.invoice_number}</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {i.type_display ?? i.type} · {i.course_name || "—"} · {formatDate(i.created_at)}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {i.sent_at ? `Emailed to ${i.emailed_to}` : "Not emailed yet"}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="text-sm font-medium tabular-nums">{formatNPR(Number(i.amount))}</span>
+            {i.pdf_url && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground size-8"
+                title="Open PDF"
+                onClick={() => window.open(i.pdf_url as string, "_blank")}
+              >
+                <ExternalLink />
+              </Button>
+            )}
+            {user?.is_staff && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground size-8"
+                title="Re-send email"
+                disabled={resend.isPending}
+                onClick={() => resend.mutate(i.id)}
+              >
+                <Send />
+              </Button>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AttendanceTab({ studentId }: { studentId: number }) {
+  const [courseFilter, setCourseFilter] = useState<string>("all");
+  const course = courseFilter === "all" ? undefined : Number(courseFilter);
+
+  const profileQ = useAttendanceProfile(studentId, course);
+  const recordsQ = useStudentAttendance(studentId, course ? { course } : {});
+  const coursesQ = useCourses(1, 100, "");
+  const mark = useMarkAttendance(studentId);
+  const removeRecord = useDeleteAttendance(studentId);
+
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [status, setStatus] = useState<ApiAttendanceStatus>("present");
+  const [remarks, setRemarks] = useState("");
+
+  const profile = profileQ.data;
+  const records = recordsQ.data?.results ?? [];
+  const courses = coursesQ.data?.results ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-sm">Attendance overview</p>
+        <Select value={courseFilter} onValueChange={setCourseFilter}>
+          <SelectTrigger className="h-8 w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All courses</SelectItem>
+            {courses.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {profileQ.isLoading ? (
+        <Skeleton className="h-20 w-full rounded-xl" />
+      ) : profile ? (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Stat label="Attendance" value={`${profile.attendance_percentage}%`} />
+            <Stat label="Present" value={`${profile.present_count}/${profile.total_classes}`} />
+            <Stat label="Current streak" value={profile.current_streak} />
+            <Stat label="Longest streak" value={profile.longest_streak} />
+          </div>
+
+          {profile.monthly_breakdown?.length > 0 && (
+            <div className="space-y-1.5">
+              {profile.monthly_breakdown.map((m) => (
+                <div key={m.month} className="flex items-center gap-3">
+                  <span className="text-muted-foreground w-16 font-mono text-xs">{m.month}</span>
+                  <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                    <div
+                      className="bg-brand h-full rounded-full"
+                      style={{ width: `${m.percentage}%` }}
+                    />
+                  </div>
+                  <span className="w-24 text-right text-xs tabular-nums">
+                    {m.present}/{m.total} · {m.percentage}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : null}
+
+      <div className="space-y-3 rounded-xl border p-3">
+        <p className="text-sm font-semibold">Mark attendance</p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Date</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as ApiAttendanceStatus)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Remarks</Label>
+            <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional" />
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="brand"
+          disabled={mark.isPending || !date}
+          onClick={() =>
+            mark.mutate(
+              { date, status, course: course ?? null, remarks: remarks || null },
+              { onSuccess: () => setRemarks("") },
+            )
+          }
+        >
+          <CalendarCheck /> {mark.isPending ? "Saving…" : "Mark"}
+        </Button>
+        {courseFilter === "all" && (
+          <p className="text-muted-foreground text-xs">
+            Pick a course above to attach the record to a specific course.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <p className="mb-1 text-sm font-semibold">Recent records</p>
+        {recordsQ.isLoading ? (
+          <Skeleton className="h-16 w-full rounded-xl" />
+        ) : records.length === 0 ? (
+          <p className="text-muted-foreground py-6 text-center text-sm">No attendance recorded.</p>
+        ) : (
+          <ul className="divide-border divide-y">
+            {records.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm">{formatDate(r.date)}</p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {r.course_name || "No course"}
+                    {r.remarks ? ` · ${r.remarks}` : ""}
+                    {r.marked_by_name ? ` · by ${r.marked_by_name}` : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                      r.status === "present"
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                        : "bg-destructive/10 text-destructive",
+                    )}
+                  >
+                    {r.status}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive size-8"
+                    title="Delete record"
+                    onClick={() => removeRecord.mutate(r.id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DocumentsTab({ studentId }: { studentId: number }) {
+  const { data, isLoading } = useStudentDocuments(studentId);
+  const docs = data?.results ?? [];
+
+  if (isLoading) return <Skeleton className="h-20 w-full rounded-xl" />;
+  if (!docs.length)
+    return <p className="text-muted-foreground py-8 text-center text-sm">No documents uploaded.</p>;
+
+  return (
+    <ul className="divide-border divide-y">
+      {docs.map((d) => (
+        <li key={d.id} className="flex items-center justify-between gap-3 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <FileText className="text-muted-foreground size-4 shrink-0" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{d.document_type}</p>
+              {d.created_at && (
+                <p className="text-muted-foreground text-xs">{formatDate(d.created_at)}</p>
+              )}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => window.open(d.file, "_blank")}>
+            <ExternalLink /> Open
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ------------------------------------------------------------------ sheet */
+
+/** Student detail — profile, payment summary, invoices, attendance, documents. */
+export function StudentDetailSheet({
+  studentId,
+  onClose,
+}: {
+  studentId: number | null;
+  onClose: () => void;
+}) {
+  const { data: student, isLoading } = useStudent(studentId);
+
+  return (
+    <Sheet open={studentId != null} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="sm:max-w-2xl">
+        <SheetHeader>
+          {isLoading || !student ? (
+            <Skeleton className="h-10 w-56" />
+          ) : (
+            <>
+              <SheetTitle className="flex items-center gap-2">
+                {student.full_name}
+                <Badge variant="secondary" className={cn("capitalize", STATUS_TONE[student.status])}>
+                  {student.status}
+                </Badge>
+              </SheetTitle>
+              <SheetDescription>
+                <span className="font-mono">{student.student_id}</span> · {student.phone}
+                {student.branch_name ? ` · ${student.branch_name}` : ""}
+              </SheetDescription>
+            </>
+          )}
+        </SheetHeader>
+
+        <SheetBody>
+          {isLoading || !student ? (
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-40 w-full rounded-xl" />
+            </div>
+          ) : (
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList className="w-full">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                <TabsTrigger value="attendance">Attendance</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <Stat label="Total paid" value={formatNPR(Number(student.total_paid ?? 0))} />
+                  <Stat label="Enrollments" value={student.enrollment_count ?? 0} />
+                  <Stat label="Documents" value={student.document_count ?? 0} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 rounded-xl border p-3">
+                  <Field label="Email" value={student.email} />
+                  <Field label="Secondary phone" value={student.secondary_phone} />
+                  <Field label="Date of birth" value={student.date_of_birth ? formatDate(student.date_of_birth) : null} />
+                  <Field label="Gender" value={student.gender} />
+                  <Field label="Address" value={[student.address, student.city, student.state].filter(Boolean).join(", ")} />
+                  <Field label="Enrolled" value={student.enrolled_at ? formatDate(student.enrolled_at) : null} />
+                  <Field
+                    label="Guardian"
+                    value={
+                      student.guardian_name
+                        ? `${student.guardian_name}${student.guardian_relation ? ` (${student.guardian_relation})` : ""}${student.guardian_phone ? ` · ${student.guardian_phone}` : ""}`
+                        : null
+                    }
+                  />
+                  <Field
+                    label="Emergency contact"
+                    value={
+                      student.emergency_contact_name
+                        ? `${student.emergency_contact_name}${student.emergency_contact_phone ? ` · ${student.emergency_contact_phone}` : ""}`
+                        : null
+                    }
+                  />
+                  <Field label="Source" value={student.source_name} />
+                  <Field label="Counselor" value={student.assigned_counselor_name} />
+                </div>
+
+                {student.notes && (
+                  <p className="text-muted-foreground rounded-xl border p-3 text-sm">{student.notes}</p>
+                )}
+
+                <div>
+                  <p className="mb-1 text-sm font-semibold">Recent payments</p>
+                  {student.recent_payments?.length ? (
+                    <ul className="divide-border divide-y">
+                      {student.recent_payments.map((p, i) => (
+                        <li key={i} className="flex items-center justify-between gap-3 py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{formatNPR(Number(p.amount))}</p>
+                            <p className="text-muted-foreground truncate text-xs">
+                              {formatDateTime(p.payment_date)} · {p.payment_method.replace(/_/g, " ")}
+                              {p.course ? ` · ${p.course}` : ""}
+                              {p.transaction_reference ? ` · ${p.transaction_reference}` : ""}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                              p.status === "successful"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {p.status}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground py-4 text-sm">No payments recorded yet.</p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="invoices">
+                <InvoicesTab studentId={student.id} />
+              </TabsContent>
+
+              <TabsContent value="attendance">
+                <AttendanceTab studentId={student.id} />
+              </TabsContent>
+
+              <TabsContent value="documents">
+                <DocumentsTab studentId={student.id} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  );
+}

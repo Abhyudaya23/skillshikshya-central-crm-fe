@@ -20,6 +20,8 @@ export interface EnrollmentRow {
 export interface PaymentRow {
   id: string;
   leadId?: string;
+  /** Parent enrollment — needed to address the nested payment endpoints. */
+  enrollmentId?: string;
   leadName: string;
   courseName?: string;
   amount: number;
@@ -96,6 +98,7 @@ export function usePayments() {
     rows = (query.data?.results ?? []).map((p) => ({
       id: String(p.id),
       leadId: String(p.lead),
+      enrollmentId: String(p.enrollment),
       leadName: p.lead_name,
       courseName: p.course_name,
       amount: Number(p.amount),

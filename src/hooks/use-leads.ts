@@ -492,6 +492,21 @@ export function useEnrollmentPayments(
 }
 
 /**
+ * One payment by id — used where only the flat `/api/payments/` row is at hand
+ * (it omits `notes`), so corrections start from the full record.
+ */
+export function usePayment(leadId?: number, enrollmentId?: number, id?: number) {
+  const { source } = useDataSource();
+  const enabled = source === "api" && leadId != null && enrollmentId != null && id != null;
+  const query = useQuery({
+    queryKey: ["lead", "payment", leadId, enrollmentId, id],
+    enabled,
+    queryFn: () => leadsService.payment(leadId as number, enrollmentId as number, id as number),
+  });
+  return { payment: query.data ?? null, isLoading: enabled && query.isLoading };
+}
+
+/**
  * Every payment of a lead, across all of its enrollments (newest first).
  * Shares the cache with `useEnrollmentPayments` (same query keys).
  */
@@ -578,8 +593,30 @@ export function useAddPayment(leadId?: number, enrollmentId?: number) {
       void qc.invalidateQueries({ queryKey: ["lead"] });
       void qc.invalidateQueries({ queryKey: ["enrollments"] });
       void qc.invalidateQueries({ queryKey: ["payments"] });
+      // A successful payment generates a receipt invoice server-side.
+      void qc.invalidateQueries({ queryKey: ["invoices"] });
     },
     onError: (e) => toast.error(apiErrorMessage(e, "Could not record payment")),
+  });
+}
+
+/**
+ * Correct an existing payment. Marking a pending payment `successful` triggers
+ * its receipt email, so invoices are invalidated alongside the billing caches.
+ */
+export function useUpdatePayment(leadId?: number, enrollmentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ApiPaymentPayload }) =>
+      leadsService.updatePayment(leadId as number, enrollmentId as number, id, payload),
+    onSuccess: () => {
+      toast.success("Payment updated");
+      void qc.invalidateQueries({ queryKey: ["lead"] });
+      void qc.invalidateQueries({ queryKey: ["enrollments"] });
+      void qc.invalidateQueries({ queryKey: ["payments"] });
+      void qc.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e, "Could not update payment")),
   });
 }
 
