@@ -10,8 +10,10 @@ export interface CallMinutesTransaction {
   id: number;
   /** Positive for top-ups/adjustments, negative for deductions. */
   amount: number;
+  amount_minutes: number;
   type: CallMinutesTransactionType;
   balance_after: number;
+  balance_after_minutes: number;
   /** Related LeadCall id (deductions only). */
   call: number | null;
   note: string;
@@ -43,5 +45,6 @@ export interface CallMinutesTransactionsParams {
 /** GET /users/me/call-minutes/ — own balance + last 10 transactions. */
 export interface MyCallMinutes {
   balance: number;
+  balance_minutes: number;
   recent_transactions: CallMinutesTransaction[];
 }

@@ -30,6 +30,23 @@ function formatDateTime(iso: string) {
   });
 }
 
+function formatSignedMinutes(minutes: number): string {
+  const totalSeconds = Math.round(Math.abs(minutes * 60));
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  const sign = minutes >= 0 ? '+' : '-';
+  return `${sign} ${mins} min : ${secs.toString().padStart(2, '0')} sec`;
+}
+
+function formatHoursMinutesSeconds(minutes: number): string {
+  const totalSeconds = Math.round(Math.abs(minutes * 60));
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+}
+
 /** Signed-in user's call-minutes balance + last 10 ledger rows. */
 export default function CallMinutesPage() {
   const { data, isLoading } = useMyCallMinutes();
@@ -67,7 +84,7 @@ export default function CallMinutesPage() {
               <Skeleton className="h-10 w-24" />
             ) : (
               <>
-                <p className="font-headline text-4xl font-semibold">{data?.balance ?? 0}</p>
+                <p className="font-headline text-4xl font-semibold">{data?.balance_minutes ?? 0}</p>
                 <p className="text-muted-foreground mt-1 text-xs">minutes available</p>
               </>
             )}
@@ -118,14 +135,16 @@ export default function CallMinutesPage() {
                     </TableCell>
                     <TableCell
                       className={
-                        t.amount >= 0
+                        t.amount_minutes >= 0
                           ? "font-semibold text-emerald-600 dark:text-emerald-400"
                           : "font-semibold text-destructive"
                       }
                     >
-                      {t.amount >= 0 ? `+${t.amount}` : t.amount}
+                      {/* {t.amount_minutes >= 0 ? `+${t.amount_minutes}` : t.amount_minutes} */}
+                      {formatSignedMinutes(t.amount_minutes)}
                     </TableCell>
-                    <TableCell>{t.balance_after}</TableCell>
+                    {/* <TableCell>{t.balance_after_minutes}</TableCell> */}
+                    <TableCell>{formatHoursMinutesSeconds(t.balance_after_minutes)}</TableCell>
                     <TableCell className="text-muted-foreground max-w-48 truncate">
                       {t.note || "—"}
                     </TableCell>
