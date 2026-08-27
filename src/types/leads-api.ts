@@ -16,6 +16,8 @@ export interface ApiLeadSource {
   name: string;
   description?: string | null;
   is_active: boolean;
+  /** Protected sources cannot be deleted (staff toggle via PATCH). */
+  is_protected: boolean;
 }
 
 export interface ApiCampaign {
@@ -60,6 +62,24 @@ export interface ApiLeadTypeConfig {
   code?: string;
   sort_order?: number;
   is_active?: boolean;
+}
+
+/** `/api/learning-modes/` — see lead_app_overview.md §Learning Modes. */
+export interface ApiLearningMode {
+  id: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+}
+
+/** `/api/institutions/` — see lead_app_overview.md §Institutions. */
+export interface ApiInstitution {
+  id: number;
+  name: string;
+  code: string;
+  address?: string | null;
+  phone?: string | null;
+  is_active: boolean;
 }
 
 /* --------------------------------------------------------------------- lead */

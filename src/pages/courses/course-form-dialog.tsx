@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateCourse, useUpdateCourse } from "@/hooks/use-courses";
+import { useCourseCategories, useCreateCourse, useUpdateCourse } from "@/hooks/use-courses";
 import type { Course, CourseType } from "@/types";
 
 const COURSE_TYPES: { value: CourseType; label: string }[] = [
@@ -33,6 +34,7 @@ interface FormState {
   one_time_payment_discount: string;
   syllabus: string;
   remarks: string;
+  categories: number[];
 }
 
 const emptyForm: FormState = {
@@ -42,6 +44,7 @@ const emptyForm: FormState = {
   one_time_payment_discount: "",
   syllabus: "",
   remarks: "",
+  categories: [],
 };
 
 function toForm(course: Course): FormState {
@@ -52,6 +55,7 @@ function toForm(course: Course): FormState {
     one_time_payment_discount: course.one_time_payment_discount ?? "",
     syllabus: course.syllabus ?? "",
     remarks: course.remarks ?? "",
+    categories: course.categories ?? [],
   };
 }
 
@@ -68,6 +72,7 @@ export function CourseFormDialog({
   const [form, setForm] = useState<FormState>(emptyForm);
   const create = useCreateCourse();
   const update = useUpdateCourse();
+  const categoriesQ = useCourseCategories(open);
   const busy = create.isPending || update.isPending;
 
   useEffect(() => {
@@ -76,6 +81,12 @@ export function CourseFormDialog({
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const toggleCategory = (id: number, checked: boolean) =>
+    setForm((f) => ({
+      ...f,
+      categories: checked ? [...f.categories, id] : f.categories.filter((c) => c !== id),
+    }));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +97,7 @@ export function CourseFormDialog({
       one_time_payment_discount: form.one_time_payment_discount || undefined,
       syllabus: form.syllabus || undefined,
       remarks: form.remarks || undefined,
+      categories: form.categories,
     };
     if (isEdit) {
       update.mutate({ id: course.id, payload }, { onSuccess: () => onOpenChange(false) });
@@ -179,6 +191,25 @@ export function CourseFormDialog({
                 onChange={(e) => set("remarks", e.target.value)}
               />
             </div>
+            {categoriesQ.data && categoriesQ.data.results.length > 0 && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Categories</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {categoriesQ.data.results.map((cat) => (
+                    <label
+                      key={cat.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={form.categories.includes(cat.id)}
+                        onCheckedChange={(c) => toggleCategory(cat.id, c === true)}
+                      />
+                      {cat.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

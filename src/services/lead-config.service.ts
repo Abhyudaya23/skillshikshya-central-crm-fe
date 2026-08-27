@@ -2,11 +2,13 @@ import { api } from "@/lib/api";
 import type { Paginated } from "@/types";
 import type {
   ApiCampaign,
+  ApiInstitution,
   ApiLeadPriority,
   ApiLeadSource,
   ApiLeadStatus,
   ApiLeadTag,
   ApiLeadTypeConfig,
+  ApiLearningMode,
 } from "@/types/leads-api";
 
 export interface ListParams {
@@ -48,3 +50,9 @@ export const leadStatusesService = crud<ApiLeadStatus, Omit<ApiLeadStatus, "id">
 export const leadPrioritiesService = crud<ApiLeadPriority, Omit<ApiLeadPriority, "id">>("/lead-priorities/");
 export const leadTagsService = crud<ApiLeadTag, Omit<ApiLeadTag, "id">>("/lead-tags/");
 export const leadTypesService = crud<ApiLeadTypeConfig, Omit<ApiLeadTypeConfig, "id">>("/lead-types/");
+export const learningModesService = crud<ApiLearningMode, Omit<ApiLearningMode, "id">>(
+  "/learning-modes/",
+);
+export const institutionsService = crud<ApiInstitution, Omit<ApiInstitution, "id">>(
+  "/institutions/",
+);

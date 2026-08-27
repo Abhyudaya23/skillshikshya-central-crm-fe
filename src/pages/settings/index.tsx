@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Lock, Pencil, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -25,22 +25,38 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useDataSource } from "@/context/data-source";
 import { useRole } from "@/context/role";
+import { useAuth } from "@/context/auth";
 import { LEAD_PRIORITIES, LEAD_SOURCES, LEAD_STATUSES, LEAD_TYPES } from "@/data/lead-lookups";
 import {
   campaignHooks,
+  institutionHooks,
+  learningModeHooks,
   priorityHooks,
   sourceHooks,
   statusHooks,
   tagHooks,
   useCampaigns,
+  useInstitutions,
   useLeadPriorities,
   useLeadSources,
   useLeadStatuses,
   useLeadTags,
+  useLearningModes,
 } from "@/hooks/use-lead-config";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/leads-format";
+import { useOrbitChatSyncState, useUpdateOrbitChatSync } from "@/hooks/use-orbitchat";
 
-type Section = "sources" | "campaigns" | "statuses" | "priorities" | "tags" | "types";
+type Section =
+  | "sources"
+  | "campaigns"
+  | "statuses"
+  | "priorities"
+  | "tags"
+  | "types"
+  | "learning_modes"
+  | "institutions"
+  | "integrations";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "sources", label: "Lead Sources" },
@@ -49,6 +65,9 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "priorities", label: "Priorities" },
   { key: "tags", label: "Tags" },
   { key: "types", label: "Lead Types" },
+  { key: "learning_modes", label: "Learning Modes" },
+  { key: "institutions", label: "Institutions" },
+  { key: "integrations", label: "Integrations" },
 ];
 
 /* ------------------------------------------------------------ field schema */
@@ -80,6 +99,12 @@ const ENTITY: Partial<Record<Section, EntityConfig>> = {
       { key: "name", label: "Name", type: "text", required: true },
       { key: "description", label: "Description", type: "text" },
       { key: "is_active", label: "Active", type: "bool", default: true },
+      {
+        key: "is_protected",
+        label: "Protected (cannot be deleted)",
+        type: "bool",
+        default: false,
+      },
     ],
     hooks: sourceHooks as never,
   },
@@ -123,6 +148,26 @@ const ENTITY: Partial<Record<Section, EntityConfig>> = {
       { key: "is_active", label: "Active", type: "bool", default: true },
     ],
     hooks: tagHooks as never,
+  },
+  learning_modes: {
+    label: "Learning mode",
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "code", label: "Code", type: "text", required: true },
+      { key: "is_active", label: "Active", type: "bool", default: true },
+    ],
+    hooks: learningModeHooks as never,
+  },
+  institutions: {
+    label: "Institution",
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "code", label: "Code", type: "text", required: true },
+      { key: "address", label: "Address", type: "text" },
+      { key: "phone", label: "Phone", type: "text" },
+      { key: "is_active", label: "Active", type: "bool", default: true },
+    ],
+    hooks: institutionHooks as never,
   },
 };
 
@@ -242,6 +287,44 @@ function EditorDialog({
   );
 }
 
+/* ------------------------------------------------------------- integrations */
+
+function OrbitChatSyncCard({ canManage }: { canManage: boolean }) {
+  const stateQ = useOrbitChatSyncState(canManage);
+  const update = useUpdateOrbitChatSync();
+  const state = stateQ.data;
+
+  return (
+    <div className="bg-surface-container-low flex items-start justify-between gap-4 rounded-lg border p-4">
+      <div className="min-w-0 space-y-1">
+        <div className="flex items-center gap-2">
+          <RefreshCcw className="text-brand size-4 shrink-0" />
+          <p className="text-sm font-semibold">OrbitChat lead sync</p>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Hourly automatic import of OrbitChat contacts as CRM leads. Toggling takes effect on the
+          next hourly tick — no restart needed.
+        </p>
+        <p className="text-muted-foreground text-xs">
+          Last sync:{" "}
+          {state?.last_sync_at ? (
+            formatDateTime(state.last_sync_at)
+          ) : stateQ.isLoading ? (
+            "…"
+          ) : (
+            "never"
+          )}
+        </p>
+      </div>
+      <Switch
+        disabled={!canManage || update.isPending}
+        checked={state?.is_enabled ?? false}
+        onCheckedChange={(checked) => update.mutate({ is_enabled: checked })}
+      />
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------- page */
 
 function RowItem({
@@ -250,13 +333,17 @@ function RowItem({
   onEdit,
   onDelete,
   canManage,
+  locked,
 }: {
   row: Row;
   meta?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   canManage: boolean;
+  /** Backend-protected rows (e.g. protected lead sources) — delete is hidden. */
+  locked?: boolean;
 }) {
+  const deletable = canManage && onDelete && !locked;
   return (
     <div className="bg-surface-container-low flex items-center justify-between gap-4 rounded-lg border p-3">
       <div className="flex min-w-0 items-center gap-2">
@@ -267,6 +354,11 @@ function RowItem({
         </div>
       </div>
       <div className="flex items-center gap-1">
+        {locked && (
+          <span className="bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold">
+            <Lock className="size-3" /> Protected
+          </span>
+        )}
         <span
           className={cn(
             "rounded-full px-2 py-0.5 text-xs font-semibold",
@@ -282,7 +374,7 @@ function RowItem({
             <Pencil className="size-4" />
           </Button>
         )}
-        {canManage && onDelete && (
+        {deletable && (
           <Button size="icon" variant="ghost" className="size-8" onClick={onDelete}>
             <Trash2 className="text-destructive size-4" />
           </Button>
@@ -309,6 +401,8 @@ export default function SettingsPage() {
   const statusesQ = useLeadStatuses(isApi);
   const prioritiesQ = useLeadPriorities(isApi);
   const tagsQ = useLeadTags(isApi);
+  const learningModesQ = useLearningModes(isApi);
+  const institutionsQ = useInstitutions(isApi);
 
   // Call every remove hook unconditionally (rules of hooks), then select one.
   const removeSource = sourceHooks.useRemove();
@@ -316,16 +410,18 @@ export default function SettingsPage() {
   const removeStatus = statusHooks.useRemove();
   const removePriority = priorityHooks.useRemove();
   const removeTag = tagHooks.useRemove();
-  const removeHook =
-    section === "sources"
-      ? removeSource
-      : section === "campaigns"
-        ? removeCampaign
-        : section === "statuses"
-          ? removeStatus
-          : section === "priorities"
-            ? removePriority
-            : removeTag;
+  const removeLearningMode = learningModeHooks.useRemove();
+  const removeInstitution = institutionHooks.useRemove();
+  const REMOVE_BY_SECTION: Partial<Record<Section, typeof removeSource>> = {
+    sources: removeSource,
+    campaigns: removeCampaign,
+    statuses: removeStatus,
+    priorities: removePriority,
+    tags: removeTag,
+    learning_modes: removeLearningMode,
+    institutions: removeInstitution,
+  };
+  const removeHook = REMOVE_BY_SECTION[section] ?? removeSource;
 
   const heading = SECTIONS.find((s) => s.key === section)!.label;
 
@@ -341,6 +437,10 @@ export default function SettingsPage() {
         return (prioritiesQ.data?.results ?? []) as unknown as Row[];
       case "tags":
         return (tagsQ.data?.results ?? []) as unknown as Row[];
+      case "learning_modes":
+        return (learningModesQ.data?.results ?? []) as unknown as Row[];
+      case "institutions":
+        return (institutionsQ.data?.results ?? []) as unknown as Row[];
       default:
         return [];
     }
@@ -362,6 +462,10 @@ export default function SettingsPage() {
   }
 
   const isTypes = section === "types";
+  const isIntegrations = section === "integrations";
+  const { user } = useAuth();
+  // OrbitChat sync-state is staff-only per the API guide.
+  const canManageIntegrations = isApi && !!user?.is_staff;
 
   return (
     <div className="space-y-6">
@@ -372,7 +476,8 @@ export default function SettingsPage() {
           </p>
           <h1 className="font-headline mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Configure the CRM vocabulary — sources, campaigns, statuses, priorities, and tags.
+            Configure the CRM vocabulary — sources, campaigns, statuses, priorities, tags,
+            learning modes, and institutions.
             {!isApi && " Switch the data source to Live to edit."}
           </p>
         </div>
@@ -399,59 +504,82 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base">{heading}</CardTitle>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {isTypes
-                  ? "Fixed system enum — not editable."
-                  : "Controlled values reused across attribution, filtering, and reports."}
-              </p>
-            </div>
-            {canManage && !isTypes && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditing(null);
-                  setEditorOpen(true);
-                }}
-              >
-                <Plus /> New
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {isApi && !isTypes ? (
-              liveRows().length > 0 ? (
-                liveRows().map((r) => (
-                  <RowItem
-                    key={r.id}
-                    row={r}
-                    canManage={canManage}
-                    onEdit={() => {
-                      setEditing(r);
-                      setEditorOpen(true);
-                    }}
-                    onDelete={() => setDeleting(r)}
-                  />
-                ))
+        {isIntegrations ? (
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle className="text-base">{heading}</CardTitle>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Third-party services that feed data into the CRM.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {canManageIntegrations ? (
+                <OrbitChatSyncCard canManage={canManageIntegrations} />
               ) : (
                 <p className="text-muted-foreground py-8 text-center text-sm">
-                  No {heading.toLowerCase()} yet.
+                  Only administrators can manage integrations.
                 </p>
-              )
-            ) : (
-              mockRows().map((r, i) => (
-                <RowItem key={i} row={{ id: i, name: r.name, is_active: true }} meta={r.meta} canManage={false} />
-              ))
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">{heading}</CardTitle>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {isTypes
+                    ? "Fixed system enum — not editable."
+                    : "Controlled values reused across attribution, filtering, and reports."}
+                </p>
+              </div>
+              {canManage && !isTypes && !isIntegrations && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditing(null);
+                    setEditorOpen(true);
+                  }}
+                >
+                  <Plus /> New
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {isApi && !isTypes ? (
+                liveRows().length > 0 ? (
+                  liveRows().map((r) => (
+                    <RowItem
+                      key={r.id}
+                      row={r}
+                      canManage={canManage}
+                      locked={r.is_protected === true}
+                      onEdit={() => {
+                        setEditing(r);
+                        setEditorOpen(true);
+                      }}
+                      onDelete={() => setDeleting(r)}
+                    />
+                  ))
+                ) : (
+                  <p className="text-muted-foreground py-8 text-center text-sm">
+                    No {heading.toLowerCase()} yet.
+                  </p>
+                )
+              ) : (
+                mockRows().map((r, i) => (
+                  <RowItem key={i} row={{ id: i, name: r.name, is_active: true }} meta={r.meta} canManage={false} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {!isTypes && (
+      {!isTypes && !isIntegrations && (
         <EditorDialog
           open={editorOpen}
           onClose={() => {

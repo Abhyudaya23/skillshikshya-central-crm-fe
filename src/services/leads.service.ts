@@ -63,6 +63,17 @@ export interface LeadListParams {
   ordering?: string;
 }
 
+/** Query params accepted by GET /api/leads/{id}/calls/ (see lead_app_calls_api_guide.md). */
+export interface CallListParams {
+  page?: number;
+  page_size?: number;
+  direction?: "inbound" | "outbound";
+  call_timestamp__gte?: string;
+  call_timestamp__lte?: string;
+  /** e.g. "-call_timestamp" for newest first. */
+  ordering?: string;
+}
+
 export const leadsService = {
   async list(params: LeadListParams = {}) {
     const { data } = await api.get<Paginated<ApiLead>>("/leads/", { params });
@@ -171,8 +182,8 @@ export const leadsService = {
   async deletePayment(leadId: number, enrollmentId: number, id: number) {
     await api.delete(`/leads/${leadId}/enrollments/${enrollmentId}/payments/${id}/`);
   },
-  async calls(leadId: number) {
-    const { data } = await api.get<Paginated<ApiLeadCall>>(`/leads/${leadId}/calls/`);
+  async calls(leadId: number, params: CallListParams = {}) {
+    const { data } = await api.get<Paginated<ApiLeadCall>>(`/leads/${leadId}/calls/`, { params });
     return data;
   },
   async addCall(leadId: number, payload: Partial<ApiLeadCall>) {

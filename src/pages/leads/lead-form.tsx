@@ -452,7 +452,7 @@ export default function LeadFormPage() {
     }
     if (createLookup === "source") {
       createSource.mutate(
-        { name: trimmed, is_active: true },
+        { name: trimmed, is_active: true, is_protected: false },
         {
           onSuccess: (s) => {
             set("source", String(s.id));

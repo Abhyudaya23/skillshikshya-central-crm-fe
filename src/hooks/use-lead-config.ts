@@ -3,19 +3,23 @@ import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/api";
 import {
   campaignsService,
+  institutionsService,
   leadPrioritiesService,
   leadSourcesService,
   leadStatusesService,
   leadTagsService,
   leadTypesService,
+  learningModesService,
 } from "@/services/lead-config.service";
 import type {
   ApiCampaign,
+  ApiInstitution,
   ApiLeadPriority,
   ApiLeadSource,
   ApiLeadStatus,
   ApiLeadTag,
   ApiLeadTypeConfig,
+  ApiLearningMode,
 } from "@/types/leads-api";
 
 const BIG = { page: 1, page_size: 100 } as const;
@@ -70,6 +74,24 @@ export function useLeadTypes(enabled = true) {
   return useQuery({
     queryKey: ["lead-types"],
     queryFn: () => leadTypesService.list(BIG),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useLearningModes(enabled = true) {
+  return useQuery({
+    queryKey: ["learning-modes"],
+    queryFn: () => learningModesService.list(BIG),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useInstitutions(enabled = true) {
+  return useQuery({
+    queryKey: ["institutions"],
+    queryFn: () => institutionsService.list(BIG),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
@@ -158,4 +180,14 @@ export const typeHooks = makeCrudHooks<ApiLeadTypeConfig, Omit<ApiLeadTypeConfig
   leadTypesService,
   "lead-types",
   "Lead type",
+);
+export const learningModeHooks = makeCrudHooks<ApiLearningMode, Omit<ApiLearningMode, "id">>(
+  learningModesService,
+  "learning-modes",
+  "Learning mode",
+);
+export const institutionHooks = makeCrudHooks<ApiInstitution, Omit<ApiInstitution, "id">>(
+  institutionsService,
+  "institutions",
+  "Institution",
 );

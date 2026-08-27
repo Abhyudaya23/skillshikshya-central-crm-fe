@@ -131,6 +131,16 @@ export interface UserListParams {
 
 export type CourseType = "course" | "master_class" | "job_ready_program";
 
+/** `/api/course-categories/` — see course_app_apis_guide.md §Course Categories. */
+export interface CourseCategory {
+  id: number;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+export type CourseCategoryPayload = Partial<Omit<CourseCategory, "id">>;
+
 export interface Course {
   id: number;
   course_type: CourseType;
@@ -139,6 +149,10 @@ export interface Course {
   one_time_payment_discount: string | null;
   syllabus: string | null;
   remarks: string | null;
+  /** Attached category IDs (write) — see course_app_apis_guide.md §Course Categories. */
+  categories?: number[];
+  /** Read-only display names returned by the API. */
+  category_names?: string[];
 }
 
 export type CoursePayload = Partial<Omit<Course, "id">>;

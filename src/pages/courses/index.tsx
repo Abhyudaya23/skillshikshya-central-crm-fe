@@ -33,6 +33,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth";
 import { useCourses, useDeleteCourse } from "@/hooks/use-courses";
 import type { Course, CourseType } from "@/types";
+import { CategoryManagerDialog } from "./category-manager-dialog";
 import { CourseFormDialog } from "./course-form-dialog";
 import { TruncatedTooltip } from "@/components/ui/truncated-tooltip";
 
@@ -70,6 +71,7 @@ export default function CoursesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const [deleting, setDeleting] = useState<Course | null>(null);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   // Debounce the search box, then let the backend do the filtering (?search=).
   useEffect(() => {
@@ -118,6 +120,9 @@ export default function CoursesPage() {
               <Button variant="outline">Manage Setup</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setCategoriesOpen(true)}>
+                Manage Categories
+              </DropdownMenuItem>
               <NavLink to="/courses/batches">
                 <DropdownMenuItem>Manage Time Slots</DropdownMenuItem>
               </NavLink>
@@ -189,6 +194,15 @@ export default function CoursesPage() {
               <TableRow key={c.id}>
                 <TableCell className="max-w-xs">
                   <p className="font-semibold truncate">{c.name}</p>
+                  {c.category_names && c.category_names.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {c.category_names.map((n) => (
+                        <Badge key={n} variant="outline" className="text-[10px] px-1.5 py-0">
+                          {n}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   {c.remarks && (
                     <TruncatedTooltip text={c.remarks} className="text-muted-foreground text-xs" maxWidth="14rem" />
                   )}
@@ -275,6 +289,8 @@ export default function CoursesPage() {
       </div>
 
       <CourseFormDialog open={formOpen} onOpenChange={setFormOpen} course={editing} />
+
+      <CategoryManagerDialog open={categoriesOpen} onOpenChange={setCategoriesOpen} />
 
       <AlertDialog open={deleting != null} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

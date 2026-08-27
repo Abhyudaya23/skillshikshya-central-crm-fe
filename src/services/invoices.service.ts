@@ -23,7 +23,7 @@ export const invoicesService = {
     return data;
   },
 
-  /** Admin only — queues the invoice email again with its PDF attached. */
+  /** Admin only — queues the invoice email task again (styled HTML email). */
   async resend(id: number) {
     const { data } = await api.post<InvoiceResendResponse>(`/invoices/${id}/resend/`, {});
     return data;

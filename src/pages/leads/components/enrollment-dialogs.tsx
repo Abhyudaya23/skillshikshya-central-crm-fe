@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function EnrollmentDialog({
   primaryCourseId,
   enrollment,
   allowLeadPick = false,
+  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
@@ -74,6 +76,8 @@ export function EnrollmentDialog({
   enrollment?: ApiEnrollment | null;
   /** Show an inline Lead picker (global create flow) when no `leadId` is preset. */
   allowLeadPick?: boolean;
+  /** Fires with the created record — lets a caller select it straight away. */
+  onCreated?: (created: ApiEnrollment) => void;
 }) {
   const [f, setF] = useState<ApiEnrollmentPayload>({});
   const isEdit = !!enrollment;
@@ -143,7 +147,12 @@ export function EnrollmentDialog({
       updateEnrollment.mutate({ id: enrollment.id, payload }, { onSuccess: () => onClose() });
       return;
     }
-    addEnrollment.mutate(payload, { onSuccess: () => onClose() });
+    addEnrollment.mutate(payload, {
+      onSuccess: (created) => {
+        onCreated?.(created);
+        onClose();
+      },
+    });
   }
 
   return (
@@ -298,6 +307,8 @@ export function PaymentDialog({
   const [pickedLeadId, setPickedLeadId] = useState("");
   const [pickedEnrollmentId, setPickedEnrollmentId] = useState("");
   const [leadSearch, setLeadSearch] = useState("");
+  /** Inline "create enrollment" so a lead with none doesn't dead-end this flow. */
+  const [enrollOpen, setEnrollOpen] = useState(false);
   const effectiveLeadId = leadId ?? (pickedLeadId ? Number(pickedLeadId) : undefined);
   const effectiveEnrollmentId =
     enrollmentApiId ?? (pickedEnrollmentId ? Number(pickedEnrollmentId) : undefined);
@@ -314,6 +325,7 @@ export function PaymentDialog({
     setPickedLeadId("");
     setPickedEnrollmentId("");
     setLeadSearch("");
+    setEnrollOpen(false);
     if (payment) {
       setF({
         amount: payment.amount,
@@ -388,7 +400,19 @@ export function PaymentDialog({
                 />
               </div>
               <div className="grid gap-2 sm:col-span-2">
-                <Label required>Enrollment</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label required>Enrollment</Label>
+                  {effectiveLeadId && enrollments.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground -my-1 h-7"
+                      onClick={() => setEnrollOpen(true)}
+                    >
+                      <Plus /> New
+                    </Button>
+                  )}
+                </div>
                 <Select
                   value={pickedEnrollmentId || undefined}
                   onValueChange={setPickedEnrollmentId}
@@ -415,9 +439,14 @@ export function PaymentDialog({
                   </SelectContent>
                 </Select>
                 {effectiveLeadId && !enrollmentsQ.isLoading && enrollments.length === 0 && (
-                  <p className="text-destructive text-xs">
-                    This lead has no enrollments — create one first.
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-2.5">
+                    <p className="text-muted-foreground text-xs">
+                      This lead has no enrollments yet — payments are recorded against one.
+                    </p>
+                    <Button size="sm" variant="outline" onClick={() => setEnrollOpen(true)}>
+                      <Plus /> Create Enrollment
+                    </Button>
+                  </div>
                 )}
               </div>
             </>
@@ -481,6 +510,14 @@ export function PaymentDialog({
             {saving ? "Saving…" : isEdit ? "Save Changes" : "Record Payment"}
           </Button>
         </DialogFooter>
+
+        {/* Nested so the half-filled payment form survives creating the enrollment. */}
+        <EnrollmentDialog
+          open={enrollOpen}
+          onClose={() => setEnrollOpen(false)}
+          leadId={effectiveLeadId}
+          onCreated={(created) => setPickedEnrollmentId(String(created.id))}
+        />
       </DialogContent>
     </Dialog>
   );
