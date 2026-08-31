@@ -8,6 +8,14 @@ import type {
   CallMinutesTransactionsParams,
 } from "@/types/call-minutes";
 
+export function formatMinutesLabel(mins: number): string {
+  const totalSeconds = Math.round(Math.abs(mins * 60));
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  const sign = mins >= 0 ? "+" : "−";
+  return `${sign} ${m} min ${s.toString().padStart(2, "0")} sec`;
+}
+
 /** Admin-only paginated ledger for one user. */
 export function useCallMinutesTransactions(
   userId: number | null,
@@ -42,7 +50,10 @@ export function useAddCallMinutes() {
     mutationFn: ({ userId, payload }: { userId: number; payload: AddCallMinutesPayload }) =>
       callMinutesService.add(userId, payload),
     onSuccess: (data) => {
-      toast.success(data.detail || `Added ${data.transaction.amount} minutes`);
+      const label = data.detail || `Added ${formatMinutesLabel(data.transaction.amount_minutes)}`;
+      toast.success(label, {
+        description: `Balance: ${formatMinutesLabel(data.transaction.balance_after_minutes)}`,
+      });
       void qc.invalidateQueries({ queryKey: ["users"] });
       void qc.invalidateQueries({ queryKey: ["call-minutes"] });
     },

@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Coins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAddCallMinutes, useCallMinutesTransactions } from "@/hooks/use-call-minutes";
+import { useAddCallMinutes, useCallMinutesTransactions, formatMinutesLabel } from "@/hooks/use-call-minutes";
 import { useUsers } from "@/hooks/use-users";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import type { CallMinutesTransactionType } from "@/types/call-minutes";
@@ -93,6 +95,7 @@ export function CallMinutesDialog({
     typeFilter === "all" ? undefined : typeFilter,
   );
   const addMinutes = useAddCallMinutes();
+  const qc = useQueryClient();
 
   function resetForm() {
     setAmount("");
@@ -106,7 +109,17 @@ export function CallMinutesDialog({
     if (!Number.isFinite(parsed) || parsed <= 0) return;
     addMinutes.mutate(
       { userId: target.id, payload: { amount: parsed, note: note.trim() || undefined } },
-      { onSuccess: () => resetForm() },
+      {
+        onSuccess: (data) => {
+          const label = data.detail || `Added ${formatMinutesLabel(data.transaction.amount_minutes)}`;
+          toast.success(label, {
+            description: `Balance: ${formatMinutesLabel(data.transaction.balance_after_minutes)}`,
+          });
+          void qc.invalidateQueries({ queryKey: ["users"] });
+          void qc.invalidateQueries({ queryKey: ["call-minutes"] });
+          resetForm();
+        },
+      },
     );
   }
 
