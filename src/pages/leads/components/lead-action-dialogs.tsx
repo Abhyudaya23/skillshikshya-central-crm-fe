@@ -118,33 +118,36 @@ export function LeadActionDialogs({ action, lead, onClose }: Props) {
   }
 
   function submitCall() {
-    // Mock path (or a lead with no backend id) can't persist — keep the toast.
-    if (isMock || lead?.apiId == null) {
-      done("Call logged");
-      setCall(EMPTY_CALL);
-      return;
-    }
-    addCall.mutate(
-      {
-        call_timestamp: new Date().toISOString(),
-        caller: user?.id ?? null,
-        direction: call.direction,
-        outcome: call.outcome || null,
-        duration_seconds: call.duration ? Math.round(Number(call.duration) * 60) : null,
-        recording_url: call.recording.trim() || null,
-        notes: call.notes.trim() || null,
-        next_followup_at: call.nextFollowUp ? toNepalIso(call.nextFollowUp) : null,
-        next_action: call.nextAction.trim() || null,
-        phone_number: lead?.primaryPhone ?? null,
-      },
-      {
-        onSuccess: () => {
-          setCall(EMPTY_CALL);
-          onClose();
-        },
-      },
-    );
+  // Mock path (or a lead with no backend id) can't persist — keep the toast.
+  if (isMock || lead?.apiId == null) {
+    done("Call logged");
+    setCall(EMPTY_CALL);
+    return;
   }
+
+  addCall.mutate(
+    {
+      call_timestamp: new Date().toISOString(),
+      caller: user?.id ?? null,
+      direction: call.direction,
+      outcome: call.outcome || null,
+      duration_input: call.duration,
+      recording_url: call.recording.trim() || null,
+      notes: call.notes.trim() || null,
+      next_followup_at: call.nextFollowUp
+        ? toNepalIso(call.nextFollowUp)
+        : null,
+      next_action: call.nextAction.trim() || null,
+      phone_number: lead?.primaryPhone ?? null,
+    },
+    {
+      onSuccess: () => {
+        setCall(EMPTY_CALL);
+        onClose();
+      },
+    },
+  );
+}
 
   function submitFollowUp() {
     if (isMock || lead?.apiId == null) {
@@ -214,16 +217,20 @@ export function LeadActionDialogs({ action, lead, onClose }: Props) {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Duration (minutes)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="e.g. 4"
-                  value={call.duration}
-                  onChange={(e) => setC("duration", e.target.value)}
-                />
-              </div>
+              
+                <div className="grid gap-2">
+                  <Label>Duration</Label>
+                  <Input
+                    type="text"
+                    placeholder="e.g. 4:19, 4.19, 4m19s, or 259"
+                    value={call.duration}
+                    onChange={(e) => setC("duration", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Accepted formats: MM:SS, MM.SS, 4m19s, or total seconds.
+                  </p>
+                </div>
+
               <div className="grid gap-2">
                 <Label>Recording link</Label>
                 <Input

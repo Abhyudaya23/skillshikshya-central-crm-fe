@@ -27,6 +27,7 @@ import type {
   ApiEnrollmentPayload,
   ApiFollowup,
   ApiLeadCall,
+  ApiLeadCallPayload,
   ApiLeadDocument,
   ApiLeadPayload,
   ApiPayment,
@@ -405,13 +406,17 @@ export function useAssignLead() {
 
 export function useAddCall(leadId?: number) {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: (payload: Partial<ApiLeadCall>) => leadsService.addCall(leadId as number, payload),
+    mutationFn: (payload: Partial<ApiLeadCallPayload>) =>
+      leadsService.addCall(leadId as number, payload),
+
     onSuccess: () => {
       toast.success("Call logged");
       void qc.invalidateQueries({ queryKey: ["lead"] });
       void qc.invalidateQueries({ queryKey: ["leads"] });
     },
+
     onError: (e) => toast.error(apiErrorMessage(e, "Could not log call")),
   });
 }
